@@ -33,8 +33,12 @@
      }
  
      public net.kyori.adventure.text.@Nullable Component remove(ServerPlayer player) { // CraftBukkit - return string // Paper - return Component
-@@ -556,7 +_,13 @@
-         for (ThrownEnderpearl thrownEnderpearl : player.getEnderPearls()) {
+@@ -553,10 +_,16 @@
+ 
+         player.unRide();
+ 
+-        for (ThrownEnderpearl thrownEnderpearl : player.getEnderPearls()) {
++        for (ThrownEnderpearl thrownEnderpearl : java.util.List.copyOf(player.getEnderPearls())) { // Canvas - fix pearl save/logout race
              // Paper start - Allow using old ender pearl behavior
              if (!thrownEnderpearl.level().paperConfig().misc.legacyEnderPearlBehavior) {
 -                thrownEnderpearl.setRemoved(Entity.RemovalReason.UNLOADED_WITH_PLAYER, org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT); // CraftBukkit - add Bukkit remove cause

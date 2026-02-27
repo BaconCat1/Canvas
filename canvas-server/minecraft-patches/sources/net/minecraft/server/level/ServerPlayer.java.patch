@@ -1,5 +1,14 @@
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -266,7 +_,7 @@
+     private @Nullable BlockPos raidOmenPosition;
+     private Vec3 lastKnownClientMovement = Vec3.ZERO;
+     private Input lastClientInput = Input.EMPTY;
+-    private final Set<ThrownEnderpearl> enderPearls = new HashSet<>();
++    private final Set<ThrownEnderpearl> enderPearls = java.util.concurrent.ConcurrentHashMap.newKeySet(); // Canvas - fix pearl save/logout race
+     private long timeEntitySatOnShoulder;
+     private CompoundTag shoulderEntityLeft = new CompoundTag();
+     private CompoundTag shoulderEntityRight = new CompoundTag();
 @@ -428,6 +_,9 @@
      public boolean sentListPacket = false;
      public boolean suppressTrackerForLogin = false; // Paper - Fire PlayerJoinEvent when Player is actually ready
@@ -68,6 +77,19 @@
      }
  
      private void saveParentVehicle(ValueOutput output) {
+@@ -758,10 +_,11 @@
+         if (!this.enderPearls.isEmpty()) {
+             ValueOutput.ValueOutputList valueOutputList = output.childrenList("ender_pearls");
+ 
+-            for (ThrownEnderpearl thrownEnderpearl : this.enderPearls) {
++            for (ThrownEnderpearl thrownEnderpearl : java.util.List.copyOf(this.enderPearls)) { // Canvas - fix pearl save/logout race
+                 if (thrownEnderpearl.level().paperConfig().misc.legacyEnderPearlBehavior) continue; // Paper - Allow using old ender pearl behavior
+                 if (thrownEnderpearl.isRemoved()) {
+                     LOGGER.warn("Trying to save removed ender pearl, skipping");
++                    this.enderPearls.remove(thrownEnderpearl); // Canvas - fix pearl save/logout race
+                 } else {
+                     ValueOutput valueOutput = valueOutputList.addChild();
+                     thrownEnderpearl.save(valueOutput);
 @@ -1400,6 +_,7 @@
          if (killCredit != null) {
              this.awardStat(Stats.ENTITY_KILLED_BY.get(killCredit.getType()));
