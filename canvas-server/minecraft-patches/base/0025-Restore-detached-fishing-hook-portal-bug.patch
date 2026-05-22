@@ -1,0 +1,297 @@
+From a46747500564ad503ace1d4efe13569b35505949 Mon Sep 17 00:00:00 2001
+From: BaconCat__ <126538523+BaconCat1@users.noreply.github.com>
+Date: Mon, 18 May 2026 08:48:55 -0500
+Subject: [PATCH] Restore detached fishing hook portal bug
+
+---
+ net/minecraft/server/level/ServerPlayer.java  |  49 +++++++-
+ net/minecraft/world/entity/player/Player.java |  16 +++
+ .../world/entity/projectile/FishingHook.java  | 115 +++++++++++++++++-
+ .../ThrownEnderpearl.java                     |   3 +
+ 4 files changed, 178 insertions(+), 5 deletions(-)
+
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 8d9ebacb..1ad162ca 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -275,6 +275,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+     private @Nullable Runnable canvas$exitEndCreditsCallback = null;
+     // Canvas end - region threading
+     private final Set<ThrownEnderpearl> enderPearls = java.util.concurrent.ConcurrentHashMap.newKeySet(); // Canvas - region threading
++    private final java.util.concurrent.ConcurrentMap<java.util.UUID, CanvasEnderPearlSnapshot> canvas$enderPearlSnapshots = new java.util.concurrent.ConcurrentHashMap<>(); // Canvas - restore detached fishing hook portal behavior
+     private long timeEntitySatOnShoulder;
+     private CompoundTag shoulderEntityLeft = new CompoundTag();
+     private CompoundTag shoulderEntityRight = new CompoundTag();
+@@ -3590,19 +3591,59 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+     }
+ 
+     public void registerEnderPearl(final ThrownEnderpearl enderPearl) {
+-        if (!io.canvasmc.canvas.GlobalConfiguration.getInstance().restoreVanillaEnderPearlBehavior) return; // Canvas - restore vanilla ender pearl behavior
+-        this.enderPearls.add(enderPearl);
++        if (io.canvasmc.canvas.GlobalConfiguration.getInstance().restoreVanillaEnderPearlBehavior) { // Canvas - restore vanilla ender pearl behavior
++            this.enderPearls.add(enderPearl);
++        }
++        this.canvas$updateEnderPearlSnapshot(enderPearl); // Canvas - restore detached fishing hook portal behavior
+     }
+ 
+     public void deregisterEnderPearl(final ThrownEnderpearl enderPearl) {
+-        if (!io.canvasmc.canvas.GlobalConfiguration.getInstance().restoreVanillaEnderPearlBehavior) return; // Canvas - restore vanilla ender pearl behavior
+-        this.enderPearls.remove(enderPearl);
++        if (io.canvasmc.canvas.GlobalConfiguration.getInstance().restoreVanillaEnderPearlBehavior) { // Canvas - restore vanilla ender pearl behavior
++            this.enderPearls.remove(enderPearl);
++        }
++        this.canvas$enderPearlSnapshots.remove(enderPearl.getUUID()); // Canvas - restore detached fishing hook portal behavior
+     }
+ 
+     public Set<ThrownEnderpearl> getEnderPearls() {
+         return this.enderPearls;
+     }
+ 
++    // Canvas start - restore detached fishing hook portal behavior
++    public void canvas$updateEnderPearlSnapshot(final ThrownEnderpearl enderPearl) {
++        if (!this.level().canvasConfig().combat.restoreDetachedFishingHookPortalBug) {
++            return;
++        }
++        this.canvas$enderPearlSnapshots.put(enderPearl.getUUID(), new CanvasEnderPearlSnapshot(enderPearl.level().dimension(), enderPearl.chunkPosition().pack()));
++    }
++
++    /**
++     * Returns true if this player has an active ender pearl in a chunk *adjacent* to
++     * (Chebyshev distance 1, not equal to) the hook's chunk in the same dimension.
++     * That is the configuration in which the vanilla "stasis chamber" bug applies:
++     * the pearl's chunk-loading ticket keeps its own chunk at level 31 and propagates
++     * level 32 to the surrounding ring, which keeps the bobber's chunk loaded for
++     * blocks/redstone but stops it from entity-ticking.
++     */
++    public boolean canvas$hasAdjacentPearlForHook(final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, final long hookChunkPos) {
++        final int hookX = net.minecraft.world.level.ChunkPos.getX(hookChunkPos);
++        final int hookZ = net.minecraft.world.level.ChunkPos.getZ(hookChunkPos);
++        for (CanvasEnderPearlSnapshot snapshot : this.canvas$enderPearlSnapshots.values()) {
++            if (!snapshot.dimension.equals(dimension)) {
++                continue;
++            }
++            final int dx = Math.abs(net.minecraft.world.level.ChunkPos.getX(snapshot.chunkPos) - hookX);
++            final int dz = Math.abs(net.minecraft.world.level.ChunkPos.getZ(snapshot.chunkPos) - hookZ);
++            if (dx <= 1 && dz <= 1 && (dx | dz) != 0) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    private record CanvasEnderPearlSnapshot(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, long chunkPos) {
++    }
++    // Canvas end - restore detached fishing hook portal behavior
++
+     public CompoundTag getShoulderEntityLeft() {
+         return this.shoulderEntityLeft;
+     }
+diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
+index fb4aafe4..80da121d 100644
+--- a/net/minecraft/world/entity/player/Player.java
++++ b/net/minecraft/world/entity/player/Player.java
+@@ -1368,6 +1368,22 @@ public abstract class Player extends Avatar implements ContainerUser {
+     @Override
+     protected void preRemove(RemovalReason reason) {
+         super.preRemove(reason);
++        // Canvas start - restore detached fishing hook portal behavior
++        // Vanilla "detached fishing hook portal bug" / stasis chamber mechanic: the
++        // bobber and pressure plate are built on a chunk border with an active ender
++        // pearl in the *adjacent* chunk. The pearl's chunk-loading ticket keeps the
++        // hook's chunk loaded at level 32 (block-ticking but not entity-ticking), so
++        // the bobber stops ticking entirely and stays put on the plate. We only preserve
++        // the player->hook reference here when that exact configuration is in effect.
++        if (reason == RemovalReason.CHANGED_DIMENSION
++            && this.level().canvasConfig().combat.restoreDetachedFishingHookPortalBug
++            && this.fishing != null
++            && this instanceof net.minecraft.server.level.ServerPlayer serverPlayer
++            && serverPlayer.canvas$hasAdjacentPearlForHook(this.level().dimension(), this.fishing.canvas$getHookChunkPositionSnapshot())) {
++            this.fishing.canvas$markPortalTransferState(true, this.getUUID());
++            return;
++        }
++        // Canvas end - restore detached fishing hook portal behavior
+         this.fishing = null;
+     }
+     // Folia end - region threading
+diff --git a/net/minecraft/world/entity/projectile/FishingHook.java b/net/minecraft/world/entity/projectile/FishingHook.java
+index 9116d874..c43b26c9 100644
+--- a/net/minecraft/world/entity/projectile/FishingHook.java
++++ b/net/minecraft/world/entity/projectile/FishingHook.java
+@@ -68,6 +68,11 @@ public class FishingHook extends Projectile {
+     private final int luck;
+     private final int lureSpeed;
+     private final InterpolationHandler interpolationHandler = new InterpolationHandler(this);
++    // Canvas start - restore detached fishing hook portal behavior
++    private volatile boolean canvas$detachedPortalBugActive = false;
++    private volatile java.util.UUID canvas$detachedOwnerUuid = null;
++    private volatile long canvas$hookChunkPositionSnapshot = Long.MIN_VALUE;
++    // Canvas end - restore detached fishing hook portal behavior
+ 
+     // CraftBukkit start - Extra variables to enable modification of fishing wait time, values are minecraft defaults
+     public int minWaitTime = 100;
+@@ -166,6 +171,32 @@ public class FishingHook extends Projectile {
+         this.syncronizedRandom.setSeed(this.getUUID().getLeastSignificantBits() ^ this.level().getGameTime());
+         this.getInterpolation().interpolate();
+         super.tick();
++        // Canvas start - restore detached fishing hook portal behavior
++        // Snapshot the hook's chunk position every tick so Player#preRemove can read it
++        // off-thread without touching this entity's chunk pos directly.
++        final boolean detachedRestoreEnabled = this.level().canvasConfig().combat.restoreDetachedFishingHookPortalBug;
++        if (detachedRestoreEnabled) {
++            this.canvas$hookChunkPositionSnapshot = this.chunkPosition().pack();
++        }
++        // While the hook is in the "detached" portal-bug state we emulate the vanilla
++        // mechanic: the bobber sits in a chunk that is only kept loaded at level 32 by an
++        // adjacent ender pearl ticket (block-ticking, not entity-ticking) so the entity
++        // would simply not tick. We do nothing here until the chunk is repromoted by the
++        // owner returning to it (same dimension + same region), at which point we resume
++        // vanilla tick logic.
++        if (detachedRestoreEnabled && this.canvas$detachedPortalBugActive) {
++            final Entity rawOwner = this.getOwnerRaw();
++            if (rawOwner instanceof Player ownerPlayer
++                && !ownerPlayer.isRemoved()
++                && ownerPlayer.level().dimension() == this.level().dimension()
++                && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(ownerPlayer)) {
++                this.canvas$detachedPortalBugActive = false;
++                this.canvas$detachedOwnerUuid = null;
++            } else {
++                return;
++            }
++        }
++        // Canvas end - restore detached fishing hook portal behavior
+         Player owner = this.getPlayerOwner();
+         if (owner == null) {
+             this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DESPAWN); // CraftBukkit - add Bukkit remove cause
+@@ -504,6 +535,23 @@ public class FishingHook extends Projectile {
+     public int retrieve(final ItemStack rod, final net.minecraft.world.InteractionHand hand) {
+         // Paper end - Add hand parameter to PlayerFishEvent
+         Player owner = this.getPlayerOwner();
++        // Canvas start - restore detached fishing hook portal behavior
++        // If the owner is in a different region (e.g. another dimension after a portal),
++        // schedule the retrieve on the hook's region. The owner explicitly invoked the
++        // retrieve so we bypass the same-region shouldStopFishing check there.
++        if (!this.level().isClientSide()
++            && owner instanceof ServerPlayer serverPlayer
++            && this.level().canvasConfig().combat.restoreDetachedFishingHookPortalBug
++            && (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this)
++                || !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(serverPlayer))) {
++            this.getBukkitEntity().taskScheduler.scheduleOrExecute((Entity hookEntity) -> {
++                if (hookEntity instanceof FishingHook hook) {
++                    hook.canvas$retrieveFromDifferentRegion(serverPlayer, hand);
++                }
++            });
++            return 0;
++        }
++        // Canvas end - restore detached fishing hook portal behavior
+         if (!this.level().isClientSide() && owner != null && !this.shouldStopFishing(owner)) {
+             int dmg = 0;
+             if (this.hookedIn != null) {
+@@ -586,6 +634,25 @@ public class FishingHook extends Projectile {
+         }
+     }
+ 
++    // Canvas start - restore detached fishing hook portal behavior
++    private void canvas$retrieveFromDifferentRegion(final ServerPlayer owner, final net.minecraft.world.InteractionHand hand) {
++        if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this) || this.isRemoved()) {
++            return;
++        }
++        // Cross-region retrieve cannot safely fire vanilla fishing events or pull the
++        // hooked entity (its region may not be ours). Apply the in-ground rod damage
++        // (matching what the bobber would yield in vanilla when sitting on a block,
++        // i.e. the stasis-chamber case) and discard the hook. Damage is applied back
++        // on the owner's region.
++        final int damage = this.onGround() ? 2 : 0;
++        this.level().broadcastEntityEvent(this, EntityEvent.FISHING_ROD_REEL_IN);
++        this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DESPAWN); // CraftBukkit - add Bukkit remove cause
++        if (!owner.isRemoved()) {
++            owner.getBukkitEntity().taskScheduler.scheduleOrExecute((ServerPlayer player) -> player.getItemInHand(hand).hurtAndBreak(damage, player, hand.asEquipmentSlot()));
++        }
++    }
++    // Canvas end - restore detached fishing hook portal behavior
++
+     @Override
+     public void handleEntityEvent(final byte id) {
+         if (id == EntityEvent.FISHING_ROD_REEL_IN && this.level().isClientSide() && this.hookedIn instanceof Player player && player.isLocalPlayer()) {
+@@ -636,11 +703,46 @@ public class FishingHook extends Projectile {
+     private void updateOwnerInfo(final @Nullable FishingHook hook) {
+         Player owner = this.getPlayerOwner();
+         if (owner != null) {
+-            owner.fishing = hook;
++            // Canvas start - restore detached fishing hook portal behavior
++            final Runnable update = () -> {
++                if (hook == null) {
++                    if (owner.fishing == this) {
++                        owner.fishing = null;
++                    }
++                } else {
++                    owner.fishing = hook;
++                }
++            };
++            if (ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(owner)) {
++                update.run();
++            } else {
++                owner.getBukkitEntity().taskScheduler.scheduleOrExecute((Entity entity) -> update.run());
++            }
++            // Canvas end - restore detached fishing hook portal behavior
+         }
+     }
+ 
+     public @Nullable Player getPlayerOwner() {
++        // Canvas start - restore detached fishing hook portal behavior
++        // While detached, the player ServerPlayer instance is preserved across the
++        // portal so getOwner() should still resolve. Fall back to a UUID lookup just
++        // in case the entity reference has become stale.
++        if (this.level().canvasConfig().combat.restoreDetachedFishingHookPortalBug
++            && this.canvas$detachedPortalBugActive
++            && this.canvas$detachedOwnerUuid != null) {
++            Entity rawOwner = this.getOwnerRaw();
++            if (rawOwner instanceof Player player && !player.isRemoved()) {
++                return player;
++            }
++            net.minecraft.server.MinecraftServer server = net.minecraft.server.MinecraftServer.getServer();
++            if (server != null) {
++                ServerPlayer fallback = server.getPlayerList().getPlayer(this.canvas$detachedOwnerUuid);
++                if (fallback != null) {
++                    return fallback;
++                }
++            }
++        }
++        // Canvas end - restore detached fishing hook portal behavior
+         return this.getOwner() instanceof Player player ? player : null;
+     }
+ 
+@@ -669,6 +771,17 @@ public class FishingHook extends Projectile {
+         }
+     }
+ 
++    // Canvas start - restore detached fishing hook portal behavior
++    public long canvas$getHookChunkPositionSnapshot() {
++        return this.canvas$hookChunkPositionSnapshot;
++    }
++
++    public void canvas$markPortalTransferState(final boolean active, final java.util.UUID ownerUuid) {
++        this.canvas$detachedPortalBugActive = active;
++        this.canvas$detachedOwnerUuid = active ? ownerUuid : null;
++    }
++    // Canvas end - restore detached fishing hook portal behavior
++
+     public static enum FishHookState {
+         FLYING,
+         HOOKED_IN_ENTITY,
+diff --git a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
+index b1f13d46..7078ae33 100644
+--- a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
++++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
+@@ -275,6 +275,9 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+             }
+ 
+             if (this.isAlive()) {
++                if (owner instanceof ServerPlayer serverPlayer) {
++                    serverPlayer.canvas$updateEnderPearlSnapshot(this); // Canvas - restore detached fishing hook portal behavior
++                }
+                 BlockPos currentPos = BlockPos.containing(this.position());
+                 if ((
+                         --this.ticketTimer <= 0L
+-- 
+2.53.0
+

@@ -477,6 +477,11 @@ public class WorldConfig extends Part {
             option("criticalHitMultiplier").docs("Configures the damage modifier per critical hit");
             option("removeRedDeathAnimation").docs("Removes the red death animation seen on entities when killed");
             option("useLegacyBlastProtection").docs("Restores the blast protection logic from before 1.21");
+            option("restoreDetachedFishingHookPortalBug")
+                .docs(
+                    "Simulates Vanilla's detached fishing hook portal behavior for technical compatibility.",
+                    "This is disabled by default because it intentionally restores a Vanilla bug."
+                );
         }
 
         public boolean disableSweepingEdge = false;
@@ -486,6 +491,7 @@ public class WorldConfig extends Part {
         public float criticalHitMultiplier = 1.5F;
         public boolean removeRedDeathAnimation = false;
         public boolean useLegacyBlastProtection = false;
+        public boolean restoreDetachedFishingHookPortalBug = false;
         public boolean snowballCanKnockbackPlayers = false;
         public boolean eggCanKnockbackPlayers = false;
     }
