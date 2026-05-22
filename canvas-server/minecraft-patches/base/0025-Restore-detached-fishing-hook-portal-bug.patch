@@ -147,7 +147,7 @@ index fb4aafe411c2c8dc8ca35c2d7c25f4987b010c12..4b05b1ee1096065e7968a820eec7d9f1
      public boolean canSimulateMovement() {
          return !this.level().isClientSide() || this.isLocalPlayer();
 diff --git a/net/minecraft/world/entity/projectile/FishingHook.java b/net/minecraft/world/entity/projectile/FishingHook.java
-index 9116d87463f4068c03e733de1f73fb464219ebed..dc1af265fcabcd7d5495aa397d88b4d18efead28 100644
+index 9116d87463f4068c03e733de1f73fb464219ebed..21aca4913bbd87c3ab019b1d51b0f030e0c1dcea 100644
 --- a/net/minecraft/world/entity/projectile/FishingHook.java
 +++ b/net/minecraft/world/entity/projectile/FishingHook.java
 @@ -68,6 +68,13 @@ public class FishingHook extends Projectile {
@@ -225,14 +225,10 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..dc1af265fcabcd7d5495aa397d88b4d1
          Player owner = this.getPlayerOwner();
          if (owner == null) {
              this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DESPAWN); // CraftBukkit - add Bukkit remove cause
-@@ -500,10 +561,50 @@ public class FishingHook extends Projectile {
-     public int retrieve(final ItemStack rod) {
-         return this.retrieve(rod, net.minecraft.world.InteractionHand.MAIN_HAND);
-     }
-+    // Paper end - Add hand parameter to PlayerFishEvent
+@@ -503,7 +564,47 @@ public class FishingHook extends Projectile {
  
      public int retrieve(final ItemStack rod, final net.minecraft.world.InteractionHand hand) {
--        // Paper end - Add hand parameter to PlayerFishEvent
+         // Paper end - Add hand parameter to PlayerFishEvent
 +        // Canvas start - restore detached fishing hook portal behavior
 +        // Avoid touching hook owner state from the wrong region.
 +        if (!this.level().isClientSide()

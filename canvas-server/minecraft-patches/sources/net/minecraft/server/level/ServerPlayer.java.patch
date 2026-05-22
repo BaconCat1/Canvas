@@ -114,7 +114,7 @@
              // CraftBukkit end
              if (!respawning) CriteriaTriggers.NETHER_TRAVEL.trigger(this, this.enteredNetherPosition); // Canvas - region threading
          }
-@@ -2295,7 +_,7 @@
+@@ -2296,7 +_,7 @@
                                  ),
                                  monster -> monster.isPreventingPlayerRest(this.level(), this)
                              );
@@ -123,7 +123,7 @@
                              return Either.left(Player.BedSleepingProblem.NOT_SAFE);
                          }
                      }
-@@ -2335,7 +_,12 @@
+@@ -2336,7 +_,12 @@
                          CriteriaTriggers.SLEPT_IN_BED.trigger(this);
                      });
                      if (!this.level().canSleepThroughNights()) {
@@ -137,7 +137,7 @@
                      }
  
                      this.level().updateSleepingPlayerList();
-@@ -2406,7 +_,7 @@
+@@ -2407,7 +_,7 @@
          if (this.spawnExtraParticlesOnFall && onGround && this.fallDistance > 0.0) {
              Vec3 centered = pos.getCenter().add(0.0, 0.5, 0.0);
              int particles = (int)Mth.clamp(50.0 * this.fallDistance, 0.0, 200.0);
