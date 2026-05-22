@@ -147,7 +147,7 @@ index fb4aafe411c2c8dc8ca35c2d7c25f4987b010c12..4b05b1ee1096065e7968a820eec7d9f1
      public boolean canSimulateMovement() {
          return !this.level().isClientSide() || this.isLocalPlayer();
 diff --git a/net/minecraft/world/entity/projectile/FishingHook.java b/net/minecraft/world/entity/projectile/FishingHook.java
-index 9116d87463f4068c03e733de1f73fb464219ebed..9caed494a9fdffdf89b86d40ddce9f3f5d7e189e 100644
+index 9116d87463f4068c03e733de1f73fb464219ebed..5ad7be22d44330e933a19eb49b239f5637d624e7 100644
 --- a/net/minecraft/world/entity/projectile/FishingHook.java
 +++ b/net/minecraft/world/entity/projectile/FishingHook.java
 @@ -68,6 +68,13 @@ public class FishingHook extends Projectile {
@@ -327,7 +327,7 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..9caed494a9fdffdf89b86d40ddce9f3f
      @Override
      public void handleEntityEvent(final byte id) {
          if (id == EntityEvent.FISHING_ROD_REEL_IN && this.level().isClientSide() && this.hookedIn instanceof Player player && player.isLocalPlayer()) {
-@@ -634,13 +782,55 @@ public class FishingHook extends Projectile {
+@@ -634,13 +782,51 @@ public class FishingHook extends Projectile {
      }
  
      private void updateOwnerInfo(final @Nullable FishingHook hook) {
@@ -355,11 +355,7 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..9caed494a9fdffdf89b86d40ddce9f3f
 +                    hookOwner.fishing = hook;
 +                }
 +            };
-+            if (ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(hookOwner)) {
-+                update.run();
-+            } else {
-+                hookOwner.getBukkitEntity().taskScheduler.scheduleOrExecute((Entity _) -> update.run());
-+            }
++            hookOwner.getBukkitEntity().taskScheduler.scheduleOrExecute((Entity _) -> update.run());
 +            // Canvas end - restore detached fishing hook portal behavior
          }
      }
@@ -385,7 +381,7 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..9caed494a9fdffdf89b86d40ddce9f3f
          return this.getOwner() instanceof Player player ? player : null;
      }
  
-@@ -669,6 +859,58 @@ public class FishingHook extends Projectile {
+@@ -669,6 +855,58 @@ public class FishingHook extends Projectile {
          }
      }
  
