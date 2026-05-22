@@ -479,8 +479,7 @@ public class WorldConfig extends Part {
             option("useLegacyBlastProtection").docs("Restores the blast protection logic from before 1.21");
             option("restoreDetachedFishingHookPortalBug")
                 .docs(
-                    "Simulates Vanilla's detached fishing hook portal behavior for technical compatibility.",
-                    "This is disabled by default because it intentionally restores a Vanilla bug."
+                    "Simulates Vanilla's detached fishing hook portal behavior for technical compatibility."
                 );
         }
 
