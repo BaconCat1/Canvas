@@ -154,7 +154,7 @@ index fb4aafe411c2c8dc8ca35c2d7c25f4987b010c12..1c3ca831af66da62349e14760b6b72e5
      public boolean canSimulateMovement() {
          return !this.level().isClientSide() || this.isLocalPlayer();
 diff --git a/net/minecraft/world/entity/projectile/FishingHook.java b/net/minecraft/world/entity/projectile/FishingHook.java
-index 9116d87463f4068c03e733de1f73fb464219ebed..3bba12f690bfbaa66049fb7491eeb429e2e3b4b9 100644
+index 9116d87463f4068c03e733de1f73fb464219ebed..709c231595837c4a2a5a67729dbe3bca45c96c0b 100644
 --- a/net/minecraft/world/entity/projectile/FishingHook.java
 +++ b/net/minecraft/world/entity/projectile/FishingHook.java
 @@ -68,6 +68,13 @@ public class FishingHook extends Projectile {
@@ -162,7 +162,7 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..3bba12f690bfbaa66049fb7491eeb429
      private final int lureSpeed;
      private final InterpolationHandler interpolationHandler = new InterpolationHandler(this);
 +    // Canvas start - restore detached fishing hook portal behavior
-+    private static final boolean CANVAS_DETACHED_HOOK_DEBUG = false;
++    private static final boolean CANVAS_DETACHED_HOOK_DEBUG = Boolean.getBoolean("Canvas.DebugDetachedHooks");
 +    private volatile boolean canvas$detachedPortalBugActive = false;
 +    private volatile java.util.UUID canvas$detachedOwnerUuid = null;
 +    private volatile long canvas$hookChunkPositionSnapshot = Long.MIN_VALUE;
@@ -296,7 +296,7 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..3bba12f690bfbaa66049fb7491eeb429
 +        this.canvas$detachedPortalBugActive = false;
 +        this.canvas$detachedOwnerUuid = null;
 +        this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DESPAWN); // CraftBukkit - add Bukkit remove cause
-+        if (!owner.isRemoved()) {
++        if (this.canvas$isDetachedOwnerAvailable(owner)) {
 +            owner.getBukkitEntity().taskScheduler.scheduleOrExecute((ServerPlayer player) -> {
 +                if (player.fishing == this) {
 +                    player.fishing = null;
@@ -372,7 +372,7 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..3bba12f690bfbaa66049fb7491eeb429
 +            && this.canvas$detachedOwnerUuid != null) {
 +            if (ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this)) {
 +                Entity rawOwner = this.getOwnerRaw();
-+                if (rawOwner instanceof Player player && !player.isRemoved()) {
++                if (rawOwner instanceof Player player && this.canvas$isDetachedOwnerAvailable(player)) {
 +                    return player;
 +                }
 +            }
@@ -385,7 +385,7 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..3bba12f690bfbaa66049fb7491eeb429
          return this.getOwner() instanceof Player player ? player : null;
      }
  
-@@ -669,6 +852,58 @@ public class FishingHook extends Projectile {
+@@ -669,6 +852,72 @@ public class FishingHook extends Projectile {
          }
      }
  
@@ -405,6 +405,14 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..3bba12f690bfbaa66049fb7491eeb429
 +        return this.canvas$detachedPortalBugActive;
 +    }
 +
++    private boolean canvas$isDetachedOwnerAvailable(final Player player) {
++        if (!player.isRemoved()) {
++            return true;
++        }
++        return player instanceof ServerPlayer serverPlayer
++            && (serverPlayer.isChangingDimension() || serverPlayer.getRemovalReason() == Entity.RemovalReason.CHANGED_DIMENSION);
++    }
++
 +    private @Nullable ServerPlayer canvas$getDetachedOwner() {
 +        if (this.canvas$detachedOwnerUuid == null) {
 +            this.canvas$debugDetachedHook("get detached owner missing owner uuid");
@@ -416,8 +424,14 @@ index 9116d87463f4068c03e733de1f73fb464219ebed..3bba12f690bfbaa66049fb7491eeb429
 +            return null;
 +        }
 +        ServerPlayer player = server.getPlayerList().getPlayer(this.canvas$detachedOwnerUuid);
-+        this.canvas$debugDetachedHook("get detached owner result=" + player + " removed=" + (player != null && player.isRemoved()) + " changingDimension=" + (player != null && player.isChangingDimension()) + " dead=" + (player != null && player.isDeadOrDying()));
-+        return player != null && !player.isRemoved() ? player : null;
++        this.canvas$debugDetachedHook(
++            "get detached owner result=" + player
++                + " removed=" + (player != null && player.isRemoved())
++                + " removalReason=" + (player == null ? null : player.getRemovalReason())
++                + " changingDimension=" + (player != null && player.isChangingDimension())
++                + " dead=" + (player != null && player.isDeadOrDying())
++        );
++        return player != null && this.canvas$isDetachedOwnerAvailable(player) ? player : null;
 +    }
 +
 +    public void canvas$debugDetachedHook(final String message) {
