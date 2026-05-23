@@ -479,7 +479,9 @@ public class WorldConfig extends Part {
             option("useLegacyBlastProtection").docs("Restores the blast protection logic from before 1.21");
             option("restoreDetachedFishingHookPortalBug")
                 .docs(
-                    "Simulates Vanilla's detached fishing hook portal behavior for technical compatibility."
+                    "Simulates Vanilla's detached fishing hook portal behavior for technical compatibility.",
+                    "Only works with ender pearl chunkloaders.",
+                    "Requires \"restoreVanillaEnderPearlBehavior\" enabled!"
                 );
         }
 
