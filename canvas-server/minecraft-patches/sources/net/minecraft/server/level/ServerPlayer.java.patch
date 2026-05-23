@@ -154,7 +154,7 @@
          this.ejectPassengers();
  
          // Paper start - Workaround vehicle not tracking the passenger disconnection dismount
-@@ -3683,7 +_,7 @@
+@@ -3690,7 +_,7 @@
      }
  
      public Set<DebugSubscription<?>> debugSubscriptions() {
@@ -163,7 +163,7 @@
      }
  
      public record RespawnConfig(LevelData.RespawnData respawnData, boolean forced) {
-@@ -3696,7 +_,7 @@
+@@ -3703,7 +_,7 @@
          );
  
          private static ResourceKey<Level> getDimensionOrDefault(final ServerPlayer.@Nullable RespawnConfig respawnConfig) {
