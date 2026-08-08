@@ -1,0 +1,251 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BaconCat1 <126538523+BaconCat1@users.noreply.github.com>
+Date: Sat, 8 Aug 2026 15:30:34 -0600
+Subject: [PATCH] Fix keepalive ping spikes
+
+
+diff --git a/io/papermc/paper/util/KeepAlive.java b/io/papermc/paper/util/KeepAlive.java
+index 66d6af2833d76af28fbeb2ce70c194a559572460..78d64c40b91b726de24bfc6f08f22f87b8b4b70c 100644
+--- a/io/papermc/paper/util/KeepAlive.java
++++ b/io/papermc/paper/util/KeepAlive.java
+@@ -8,7 +8,82 @@ public class KeepAlive {
+             return this.rxTimeNS - this.txTimeNS;
+         }
+     }
+-    public static final record PendingKeepAlive(long txTimeNS, long challengeId) {}
++    // Canvas start - distinguish server dispatch delay from player ping
++    public static final class PendingKeepAlive {
++        private final long txTimeNS;
++        private final long challengeId;
++        private volatile long dispatchTimeNS;
++        private volatile Class<?> pendingQueueHead;
++        private volatile boolean pendingQueueHeadReady;
++        private volatile int eventLoopTasks;
++        private volatile boolean channelWritable;
++        private volatile boolean bypassedPendingQueue;
++        private volatile String schedulingThread;
++
++        public PendingKeepAlive(final long txTimeNS, final long challengeId) {
++            this.txTimeNS = txTimeNS;
++            this.challengeId = challengeId;
++            this.eventLoopTasks = -1;
++            this.pendingQueueHeadReady = true;
++        }
++
++        public long txTimeNS() {
++            return this.txTimeNS;
++        }
++
++        public long challengeId() {
++            return this.challengeId;
++        }
++
++        public long dispatchTimeNS() {
++            return this.dispatchTimeNS;
++        }
++
++        public Class<?> pendingQueueHead() {
++            return this.pendingQueueHead;
++        }
++
++        public boolean pendingQueueHeadReady() {
++            return this.pendingQueueHeadReady;
++        }
++
++        public int eventLoopTasks() {
++            return this.eventLoopTasks;
++        }
++
++        public boolean channelWritable() {
++            return this.channelWritable;
++        }
++
++        public boolean bypassedPendingQueue() {
++            return this.bypassedPendingQueue;
++        }
++
++        public String schedulingThread() {
++            return this.schedulingThread;
++        }
++
++        public void recordSchedulingContext(
++            final Class<?> pendingQueueHead,
++            final boolean pendingQueueHeadReady,
++            final int eventLoopTasks,
++            final boolean channelWritable,
++            final boolean bypassedPendingQueue,
++            final String schedulingThread
++        ) {
++            this.pendingQueueHead = pendingQueueHead;
++            this.pendingQueueHeadReady = pendingQueueHeadReady;
++            this.eventLoopTasks = eventLoopTasks;
++            this.channelWritable = channelWritable;
++            this.bypassedPendingQueue = bypassedPendingQueue;
++            this.schedulingThread = schedulingThread;
++        }
++
++        public void markDispatched(final long dispatchTimeNS) {
++            this.dispatchTimeNS = dispatchTimeNS;
++        }
++    }
++    // Canvas end - distinguish server dispatch delay from player ping
+ 
+     public final ca.spottedleaf.concurrentutil.collection.MultiThreadedQueue<PendingKeepAlive> pendingKeepAlives = new ca.spottedleaf.concurrentutil.collection.MultiThreadedQueue<>();
+ 
+diff --git a/net/minecraft/network/Connection.java b/net/minecraft/network/Connection.java
+index 387bc001bea09d0270a182d086b12a259f9f9b95..8586b592ff9fdb2fb6c2a1e238fa577c70cff0d4 100644
+--- a/net/minecraft/network/Connection.java
++++ b/net/minecraft/network/Connection.java
+@@ -440,10 +440,31 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
+         }
+ 
+         packet.onPacketDispatch(this.getPlayer());
+-        if (false && connected && (InnerUtil.canSendImmediate(this, packet) // Folia - region threading - connection fixes
++        // Canvas start - send keepalives immediately and measure server-side dispatch delay
++        final WrappedConsumer pendingQueueHead = this.pendingActions.peek();
++        final boolean immediateKeepAlive = packet instanceof net.minecraft.network.protocol.common.ClientboundKeepAlivePacket
++            && this.packetListener != null
++            && this.packetListener.protocol() == ConnectionProtocol.PLAY
++            && (pendingQueueHead == null || pendingQueueHead instanceof PacketSendAction && !canWrite(pendingQueueHead));
++        if (packet instanceof net.minecraft.network.protocol.common.ClientboundKeepAlivePacket keepAlivePacket
++            && this.packetListener instanceof net.minecraft.server.network.ServerCommonPacketListenerImpl listenerImpl) {
++            final Class<?> pendingQueueHeadType = pendingQueueHead instanceof PacketSendAction packetAction
++                ? packetAction.packet.getClass()
++                : pendingQueueHead == null ? null : pendingQueueHead.getClass();
++            final boolean pendingQueueHeadReady = pendingQueueHead == null || canWrite(pendingQueueHead);
++            final int eventLoopTasks = this.channel.eventLoop() instanceof io.netty.util.concurrent.SingleThreadEventExecutor eventLoop
++                ? eventLoop.pendingTasks()
++                : -1;
++            listenerImpl.canvas$recordKeepAliveSchedulingContext(
++                keepAlivePacket.getId(), pendingQueueHeadType, pendingQueueHeadReady, eventLoopTasks, this.channel.isWritable(), immediateKeepAlive,
++                Thread.currentThread().getName()
++            );
++        }
++        if (connected && (immediateKeepAlive || (false && (InnerUtil.canSendImmediate(this, packet) // Folia - region threading - connection fixes
+             || (io.papermc.paper.util.MCUtil.isMainThread() && packet.isReady() && this.pendingActions.isEmpty()
+-            && (packet.getExtraPackets() == null || packet.getExtraPackets().isEmpty())))) {
+-            this.sendPacket(packet, listener, flush);
++            && (packet.getExtraPackets() == null || packet.getExtraPackets().isEmpty())))))) {
++            // Canvas end - send keepalives immediately and measure server-side dispatch delay
++            this.sendPacket(packet, listener, flush || immediateKeepAlive); // Canvas - ensure an immediate keepalive is also flushed immediately
+         } else {
+             // Write the packets to the queue, then flush - antixray hooks there already
+             final java.util.List<Packet<?>> extraPackets = InnerUtil.buildExtraPackets(packet);
+@@ -537,6 +558,12 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
+             return;
+         }
+         try {
++            // Canvas start - measure keepalive latency from the actual network dispatch
++            if (packet instanceof net.minecraft.network.protocol.common.ClientboundKeepAlivePacket keepAlivePacket
++                && this.packetListener instanceof net.minecraft.server.network.ServerCommonPacketListenerImpl listenerImpl) {
++                listenerImpl.canvas$markKeepAliveDispatched(keepAlivePacket.getId(), System.nanoTime());
++            }
++            // Canvas end - measure keepalive latency from the actual network dispatch
+         final ChannelFuture future;
+         // Paper end - Optimize network
+         if (listener != null) {
+diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+index c194b81e07c70eaefb0363f174898fbd90eea09f..8cf38abf4de1e9c780d2c0959d93d65a4c9a9f17 100644
+--- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+@@ -46,6 +46,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+     private it.unimi.dsi.fastutil.longs.LongList keepAlives = new it.unimi.dsi.fastutil.longs.LongArrayList(); // Purpur - Alternative Keepalive Handling
+     private volatile int latency; // Paper - improve keepalives - make volatile
+     private final io.papermc.paper.util.KeepAlive keepAlive; // Paper - improve keepalives
++    private long canvas$lastKeepAliveDiagnosticTimeNS = Long.MIN_VALUE; // Canvas - diagnose keepalive latency spikes
+     public volatile boolean suspendFlushingOnServerThread = false;
+     // CraftBukkit start
+     public final org.bukkit.craftbukkit.CraftServer cserver;
+@@ -119,7 +120,14 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+         if (pending != null && pending.challengeId() == packet.getId()) {
+             this.keepAlive.pendingKeepAlives.remove(pending);
+ 
+-            io.papermc.paper.util.KeepAlive.KeepAliveResponse response = new io.papermc.paper.util.KeepAlive.KeepAliveResponse(pending.txTimeNS(), now);
++            // Canvas start - distinguish server dispatch delay from player ping
++            final io.canvasmc.canvas.network.KeepAliveDiagnostics.Timing timing = io.canvasmc.canvas.network.KeepAliveDiagnostics.measure(
++                pending.txTimeNS(), pending.dispatchTimeNS(), now
++            );
++            final long latencyStartTimeNS = timing.latencyStartTimeNs(pending.txTimeNS(), pending.dispatchTimeNS());
++            io.papermc.paper.util.KeepAlive.KeepAliveResponse response = new io.papermc.paper.util.KeepAlive.KeepAliveResponse(latencyStartTimeNS, now);
++            this.canvas$logKeepAliveDiagnostic(pending, timing, now);
++            // Canvas end - distinguish server dispatch delay from player ping
+ 
+             this.keepAlive.pingCalculator1m.update(response);
+             this.keepAlive.pingCalculator5s.update(response);
+@@ -144,6 +152,76 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+         // Paper end - improve keepalives
+     }
+ 
++    // Canvas start - diagnose keepalive latency spikes
++    public void canvas$recordKeepAliveSchedulingContext(
++        final long challengeId,
++        final Class<?> pendingQueueHead,
++        final boolean pendingQueueHeadReady,
++        final int eventLoopTasks,
++        final boolean channelWritable,
++        final boolean bypassedPendingQueue,
++        final String schedulingThread
++    ) {
++        final io.papermc.paper.util.KeepAlive.PendingKeepAlive pending = this.canvas$findPendingKeepAlive(challengeId);
++        if (pending != null) {
++            pending.recordSchedulingContext(
++                pendingQueueHead, pendingQueueHeadReady, eventLoopTasks, channelWritable, bypassedPendingQueue, schedulingThread
++            );
++        }
++    }
++
++    public void canvas$markKeepAliveDispatched(final long challengeId, final long dispatchTimeNS) {
++        final io.papermc.paper.util.KeepAlive.PendingKeepAlive pending = this.canvas$findPendingKeepAlive(challengeId);
++        if (pending != null) {
++            pending.markDispatched(dispatchTimeNS);
++        }
++    }
++
++    private io.papermc.paper.util.KeepAlive.@Nullable PendingKeepAlive canvas$findPendingKeepAlive(final long challengeId) {
++        for (final io.papermc.paper.util.KeepAlive.PendingKeepAlive pending : this.keepAlive.pendingKeepAlives) {
++            if (pending.challengeId() == challengeId) {
++                return pending;
++            }
++        }
++        return null;
++    }
++
++    private void canvas$logKeepAliveDiagnostic(
++        final io.papermc.paper.util.KeepAlive.PendingKeepAlive pending,
++        final io.canvasmc.canvas.network.KeepAliveDiagnostics.Timing timing,
++        final long now
++    ) {
++        final io.canvasmc.canvas.GlobalConfiguration.Networking config = io.canvasmc.canvas.GlobalConfiguration.getInstance().networking;
++        if (!config.keepaliveDiagnostics
++            || !timing.exceeds(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(config.keepaliveDiagnosticThresholdMillis))) {
++            return;
++        }
++
++        final long logIntervalNS = java.util.concurrent.TimeUnit.SECONDS.toNanos(config.keepaliveDiagnosticLogIntervalSeconds);
++        if (this.canvas$lastKeepAliveDiagnosticTimeNS != Long.MIN_VALUE
++            && now - this.canvas$lastKeepAliveDiagnosticTimeNS < logIntervalNS) {
++            return;
++        }
++        this.canvas$lastKeepAliveDiagnosticTimeNS = now;
++
++        final Class<?> pendingQueueHead = pending.pendingQueueHead();
++        LOGGER.warn(
++            "Keepalive latency spike for {}: total={}ms, serverDispatch={}ms, networkRoundTrip={}ms, likelyCause={}, bypassedPendingQueue={}, pendingQueueHead={} (ready={}), nettyPendingTasks={}, channelWritable={}, schedulingThread={}",
++            this.playerProfile().name(),
++            java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(timing.totalTimeNs()),
++            timing.hasDispatchTime() ? java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(timing.dispatchDelayNs()) : "unknown",
++            timing.hasDispatchTime() ? java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(timing.networkRoundTripNs()) : "unknown",
++            timing.likelyCause(),
++            pending.bypassedPendingQueue(),
++            pendingQueueHead == null ? "none" : pendingQueueHead.getName(),
++            pending.pendingQueueHeadReady(),
++            pending.eventLoopTasks(),
++            pending.channelWritable(),
++            pending.schedulingThread()
++        );
++    }
++    // Canvas end - diagnose keepalive latency spikes
++
+     @Override
+     public void handlePong(final ServerboundPongPacket serverboundPongPacket) {
+     }

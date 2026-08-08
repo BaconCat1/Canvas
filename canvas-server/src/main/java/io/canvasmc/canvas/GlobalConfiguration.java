@@ -524,6 +524,17 @@ public class GlobalConfiguration extends Part {
                             "Responding to any of them in any order will keep the player connected.")
                         .blank()
                         .wordWrap("AKA, it won't kick your players because one packet gets dropped somewhere along the lines"));
+            option("keepaliveDiagnostics")
+                .docs(
+                    "Logs latency spikes while separating server-side dispatch delay from the client's network round-trip time.",
+                    "Diagnostics are rate-limited per connection and include the pending queue head and Netty event-loop state."
+                );
+            option("keepaliveDiagnosticThresholdMillis")
+                .docs("The minimum total keepalive delay in milliseconds before diagnostics are logged.")
+                .greaterThanOrEqualTo(1);
+            option("keepaliveDiagnosticLogIntervalSeconds")
+                .docs("The minimum number of seconds between keepalive diagnostic messages for the same connection.")
+                .greaterThanOrEqualTo(1);
         }
 
         public boolean filterVelocityPacket = false;
@@ -531,6 +542,9 @@ public class GlobalConfiguration extends Part {
         public boolean alternativePlayerListTick = false;
         public int playerInfoSendInterval = 600;
         public boolean purpurAlternativeKeepalive = false;
+        public boolean keepaliveDiagnostics = true;
+        public int keepaliveDiagnosticThresholdMillis = 1000;
+        public int keepaliveDiagnosticLogIntervalSeconds = 60;
     }
 
     {
