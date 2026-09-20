@@ -15,7 +15,7 @@
      id("io.papermc.fill.gradle") version "1.0.12"
  }
  
-@@ -18,12 +_,31 @@
+@@ -18,12 +_,30 @@
      paperclip("io.papermc:paperclip:3.0.4")
  }
  
@@ -28,8 +28,7 @@
      minecraftVersion = providers.gradleProperty("mcVersion")
 +    filterPatches = false
      gitFilePatches = false
-+    validateATs = false
-+
+ 
 +    val canvas = forks.register("canvas") {
 +        additionalAts.set(mergeMinecraftATs.flatMap { it.outputFile })
 +        upstream.patchDir("paperServer") {
@@ -41,10 +40,10 @@
 +    }
 +
 +    activeFork = canvas
- 
++
      updatingMinecraft {
 -        //oldPaperCommit = "e5fe71723e2ffde7cc9fafc085ac3bb73e63175e"
-+        oldForkCommit = "4a0ed14a386f20d8f7992103dc71130bc2641209"
++        // oldForkCommit = "4a0ed14a386f20d8f7992103dc71130bc2641209"
      }
  }
  
@@ -178,7 +177,7 @@
      systemProperty("net.kyori.adventure.text.warnWhenLegacyFormattingDetected", true)
      if (providers.gradleProperty("paper.runDisableWatchdog").getOrElse("false") == "true") {
          systemProperty("disable.watchdog", true)
-@@ -293,8 +_,8 @@
+@@ -294,8 +_,8 @@
      systemProperty("paper.disableMigrationDelay", true)
      systemProperty("paper.updatingMinecraft", providers.gradleProperty("updatingMinecraft").getOrElse("false").toBoolean())
  
@@ -189,7 +188,7 @@
      maxHeapSize = "${memoryGb}G"
  
      doFirst {
-@@ -326,7 +_,7 @@
+@@ -327,7 +_,7 @@
      mainClass.set(null as String?)
  }
  
@@ -198,7 +197,7 @@
      project("paper")
      versionFamily(paperweight.minecraftVersion.map { it.split(".", "-").takeWhile { part -> part.toIntOrNull() != null }.take(2).joinToString(".") })
      version(paperweight.minecraftVersion)
-@@ -340,5 +_,38 @@
+@@ -341,5 +_,38 @@
                  nameResolver.set { project, _, version, build -> "$project-$version-$build.jar" }
              }
          }

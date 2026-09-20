@@ -1,0 +1,26 @@
+--- a/net/minecraft/world/level/block/piston/PistonMovingBlockEntity.java
++++ b/net/minecraft/world/level/block/piston/PistonMovingBlockEntity.java
+@@ -154,22 +_,7 @@
+                                     dz = movement.getStepZ();
+                             }
+ 
+-                            if (!(entity instanceof ServerPlayer)) {
+-                                Vec3 deltaMovement = entity.getDeltaMovement();
+-                                double dx = deltaMovement.x;
+-                                double dy = deltaMovement.y;
+-                                double dz = deltaMovement.z;
+-                                switch (movement.getAxis()) {
+-                                    case X:
+-                                        dx = movement.getStepX();
+-                                        break;
+-                                    case Y:
+-                                        dy = movement.getStepY();
+-                                        break;
+-                                    case Z:
+-                                        dz = movement.getStepZ();
+-                                }
+-
++                            if (!(entity instanceof net.minecraft.server.level.ServerPlayer)) {
+                                 entity.setDeltaMovement(dx, dy, dz);
+                                 // Paper - EAR items stuck in slime pushed by a piston
+                                 entity.activatedTick = Math.max(entity.activatedTick, io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() + 10); // Folia - region threading

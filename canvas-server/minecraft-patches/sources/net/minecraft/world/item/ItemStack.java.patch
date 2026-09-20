@@ -1,0 +1,37 @@
+--- a/net/minecraft/world/item/ItemStack.java
++++ b/net/minecraft/world/item/ItemStack.java
+@@ -374,7 +_,8 @@
+         BlockPos pos = context.getClickedPos();
+         if (player != null && !player.getAbilities().mayBuild && !this.canPlaceOnBlockInAdventureMode(new BlockInWorld(context.getLevel(), pos, false))) {
+             return InteractionResult.PASS;
+-        }
++        } else {
++            ItemStack stackBeforeUse = this.copy();
+ 
+         Item usedItem = this.getItem();
+         // CraftBukkit start - handle all block place event logic here
+@@ -409,10 +_,6 @@
+             net.minecraft.world.level.block.SaplingBlock.treeTypeRT.set(null); // Folia - region threading
+         }
+ 
+-                treeType = net.minecraft.world.level.block.SaplingBlock.treeType;
+-                net.minecraft.world.level.block.SaplingBlock.treeType = null;
+-            }
+-
+             DataComponentPatch newPatch = this.components.asPatch();
+             int newCount = this.getCount();
+             this.setCount(previousCount);
+@@ -847,11 +_,11 @@
+     }
+ 
+     public static boolean isSameItem(final ItemStack a, final ItemStack b) {
+-        return a.is(b.getItem());
++        return a == b || a.is(b.getItem()); // Canvas - optimize matching checks
+     }
+ 
+     public static boolean isSameItemSameComponents(final ItemStack a, final ItemStack b) {
+-        return a.is(b.getItem()) && (a.isEmpty() && b.isEmpty() || Objects.equals(a.components, b.components));
++        return a == b || a.is(b.getItem()) && (a.isEmpty() && b.isEmpty() || Objects.equals(a.components, b.components)); // Canvas - optimize matching checks
+     }
+ 
+     public static boolean matchesIgnoringComponents(final ItemStack a, final ItemStack b, final Predicate<DataComponentType<?>> ignoredPredicate) {

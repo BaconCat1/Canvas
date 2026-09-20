@@ -1,0 +1,497 @@
+--- a/net/minecraft/server/commands/ScoreboardCommand.java
++++ b/net/minecraft/server/commands/ScoreboardCommand.java
+@@ -543,44 +_,29 @@
+         final Objective sourceObjective
+     ) throws CommandSyntaxException {
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-    // Canvas start - region threading
+-
+-        final List<net.minecraft.world.entity.Entity> filtered = new java.util.ArrayList<>();
+-        for (ScoreHolder target : targets) {
+-            if (!(target instanceof net.minecraft.world.entity.Entity entity)) {
+-                throw TARGET_MUST_BE_ENTITY.create(target.getScoreboardName());
+-            }
+-            filtered.add(entity);
+-        }
+-
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._int()
+-            .with(filtered)
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        // Canvas start - region threading
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> {
+                 ScoreAccess score = scoreboard.getOrCreatePlayerScore(entity, targetObjective);
+-
+                 for (ScoreHolder from : sources) {
+-
+-                    // we must ensure the following:
+-                    // - the source and target are entities
+-                    // - they are both in the same region
+-
+                     if (!(from instanceof net.minecraft.world.entity.Entity sourceEntity)) {
+                         throw new SimpleCommandExceptionType(Component.literal("Holder source \"" + from.getScoreboardName() + "\" must be an entity")).create();
+                     }
+-
+                     if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(sourceEntity)) {
+                         throw io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.CANNOT_DO_X_CROSS_REGION.create("perform score operation");
+                     }
+-
+-                    // we passed the checks, now we can apply
+-
+                     ScoreAccess sourceScore = scoreboard.getOrCreatePlayerScore(sourceEntity, sourceObjective);
+                     operation.apply(score, sourceScore);
+                 }
+-
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.addInt(score.get());
++                int value = score.get();
++                return tracker -> {
++                    tracker.track(entity, value);
++                    return tracker;
++                };
+             })
+-            .onComplete((result, processed, css) -> performOperationCallback(result, processed.stream().map(ScoreHolder.class::cast).toList(), targetObjective, css))
++            .onComplete((tracker, processed, css) -> tracker.sendFeedback(css, true, CommandResponseTracker.ElementType.ANY, RESPONSE_SCORE_OPERATION, targetObjective))
+             .start(source);
+         return 1;
+     }
+@@ -595,368 +_,141 @@
+         return entity;
+     };
+ 
+-    private static int performOperationCallback(
+-        final int result,
+-        final Collection<ScoreHolder> targets,
+-        final Objective targetObjective,
+-        final CommandSourceStack source
+-    ) {
+-    // Canvas end - region threading
+-        if (targets.size() == 1) {
+-            int finalResult = result;
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.operation.success.single", targetObjective.getFormattedDisplayName(), getFirstTargetName(targets), finalResult
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.operation.success.multiple", targetObjective.getFormattedDisplayName(), targets.size()
+-                ),
+-                true
+-            );
+-        }
+-
+-        return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.ANY, RESPONSE_SCORE_OPERATION, targetObjective);
+-    }
+-
+     private static int enableTrigger(final CommandSourceStack source, final Collection<ScoreHolder> targets, final Objective objective) throws CommandSyntaxException {
+         if (objective.getCriteria() != ObjectiveCriteria.TRIGGER) {
+             throw ERROR_NOT_TRIGGER.create();
+         }
+-
+-        CommandResponseTracker<ScoreHolder> tracker = CommandResponseTracker.create();
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-    // Canvas start - region threading
+-        final List<net.minecraft.world.entity.Entity> filtered = new java.util.ArrayList<>();
+-
+-        for (ScoreHolder name : names) {
+-            if (!(name instanceof net.minecraft.world.entity.Entity entity)) {
+-                throw TARGET_MUST_BE_ENTITY.create(name.getScoreboardName());
+-            }
+-            filtered.add(entity);
+-        }
+-
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._int()
+-            .with(filtered)
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> tracker -> {
+                 ScoreAccess score = scoreboard.getOrCreatePlayerScore(entity, objective);
+                 if (score.locked()) {
+                     score.unlock();
+-                    return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.incrementInt();
++                    tracker.track(entity);
+                 }
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.nothing();
++                return tracker;
+             })
+-            .onComplete((count, processed, css) -> enableTriggerCallback(count, processed.stream().map(ScoreHolder.class::cast).toList(), css, objective))
++            .onComplete((tracker, processed, css) -> tracker.sendFeedback(css, true, RESPONSE_ENABLE, objective))
+             .start(source);
+         return 1;
+     }
+ 
+-    private static int enableTriggerCallback(
+-        final int count, final Collection<ScoreHolder> names, final CommandSourceStack source, final Objective objective
+-    ) throws CommandSyntaxException {
+-    // Canvas end - region threading
+-
+-        if (count == 0) {
+-            throw ERROR_TRIGGER_ALREADY_ENABLED.create();
+-        }
+-
+-        if (names.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.enable.success.single", objective.getFormattedDisplayName(), getFirstTargetName(names)
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.scoreboard.players.enable.success.multiple", objective.getFormattedDisplayName(), names.size()), true
+-            );
+-        }
+-
+-        return count;
+-    }
+-
+-    // Canvas start - region threading
+-    private static int resetScores(final CommandSourceStack source, final Collection<ScoreHolder> names) throws CommandSyntaxException {
++    private static int resetScores(final CommandSourceStack source, final Collection<ScoreHolder> targets) throws CommandSyntaxException {
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._abstract(new io.canvasmc.canvas.util.CollectingList<net.minecraft.world.entity.Entity>())
+-            .with(names.stream().map(SCORE_HOLDER2ENTITY))
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> tracker -> {
+                 scoreboard.resetAllPlayerScores(entity);
+-                return (list) -> list.add(entity);
++                tracker.track(entity);
++                return tracker;
+             })
+-            .onComplete((filtered, _, css) -> resetScoresCallback(filtered.castAllTo(ScoreHolder.class).copyOf(), css))
++            .onComplete((tracker, processed, css) -> tracker.sendFeedback(css, true, RESPONSE_SCORE_RESET_ALL))
+             .start(source);
+         return 1;
+     }
+ 
+-    private static int resetScoresCallback(final Collection<ScoreHolder> names, final CommandSourceStack source) {
+-    // Canvas end - region threading
+-        if (names.size() == 1) {
+-            source.sendSuccess(() -> Component.translatable("commands.scoreboard.players.reset.all.single", getFirstTargetName(names)), true);
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.scoreboard.players.reset.all.multiple", names.size()), true);
+-        }
+-
+-        return tracker.sendFeedback(source, true, RESPONSE_SCORE_RESET_ALL);
+-    }
+-
+-    // Canvas start - region threading
+-    private static int resetScore(final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective) throws CommandSyntaxException {
++    private static int resetScore(final CommandSourceStack source, final Collection<ScoreHolder> targets, final Objective objective) throws CommandSyntaxException {
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._abstract(new io.canvasmc.canvas.util.CollectingList<net.minecraft.world.entity.Entity>())
+-            .with(names.stream().map(SCORE_HOLDER2ENTITY))
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> tracker -> {
+                 scoreboard.resetSinglePlayerScore(entity, objective);
+-                return (list) -> list.add(entity);
++                tracker.track(entity);
++                return tracker;
+             })
+-            .onComplete((filtered, _, css) -> resetScoreCallback(css, filtered.castAllTo(ScoreHolder.class).copyOf(), objective))
++            .onComplete((tracker, processed, css) -> tracker.sendFeedback(css, true, RESPONSE_SCORE_RESET, objective))
+             .start(source);
+         return 1;
+     }
+ 
+-    private static int resetScoreCallback(final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective) {
+-    // Canvas end - region threading
+-        if (names.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.reset.specific.single", objective.getFormattedDisplayName(), getFirstTargetName(names)
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.scoreboard.players.reset.specific.multiple", objective.getFormattedDisplayName(), names.size()), true
+-            );
+-        }
+-
+-        return tracker.sendFeedback(source, true, RESPONSE_SCORE_RESET, objective);
+-    }
+-
+-    // Canvas start - region threading
+-    private static int setScore(final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final int value) throws CommandSyntaxException {
++    private static int setScore(final CommandSourceStack source, final Collection<ScoreHolder> targets, final Objective objective, final int value) throws CommandSyntaxException {
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._abstract(new io.canvasmc.canvas.util.CollectingList<net.minecraft.world.entity.Entity>())
+-            .with(names.stream().map(SCORE_HOLDER2ENTITY))
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> tracker -> {
+                 scoreboard.getOrCreatePlayerScore(entity, objective).set(value);
+-                return (list) -> list.add(entity);
++                tracker.track(entity, value);
++                return tracker;
+             })
+-            .onComplete((filtered, _, css) -> setScoreCallback(css, filtered.castAllTo(ScoreHolder.class).copyOf(), objective, value))
++            .onComplete((tracker, processed, css) -> tracker.sendFeedback(css, true, RESPONSE_SCORE_SET, objective, value))
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int setScoreCallback(
+-        final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final int value
+-    ) {
+-    // Canvas end - region threading
+-        if (names.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.set.success.single", objective.getFormattedDisplayName(), getFirstTargetName(names), value
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.scoreboard.players.set.success.multiple", objective.getFormattedDisplayName(), names.size(), value),
+-                true
+-            );
+-        }
+-
+-        return tracker.sendFeedback(source, true, RESPONSE_SCORE_SET, objective, value);
+     }
+ 
+     private static int setScoreDisplay(
+-        final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final @Nullable Component display
+-    ) throws CommandSyntaxException { // Canvas - region threading
++        final CommandSourceStack source, final Collection<ScoreHolder> targets, final Objective objective, final @Nullable Component display
++    ) throws CommandSyntaxException {
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-    // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._void()
+-            .with(names.stream().map(SCORE_HOLDER2ENTITY))
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> tracker -> {
+                 scoreboard.getOrCreatePlayerScore(entity, objective).display(display);
+-                return (_) -> null;
++                tracker.track(entity);
++                return tracker;
+             })
+-            .onComplete((_, processed, css) -> setScoreDisplayCallback(css, processed.stream().map(ScoreHolder.class::cast).toList(), objective, display))
++            .onComplete((tracker, processed, css) -> display == null
++                ? tracker.sendFeedback(css, true, RESPONSE_DISPLAY_CLEAR, objective)
++                : tracker.sendFeedback(css, true, RESPONSE_DISPLAY_SET, objective, display))
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int setScoreDisplayCallback(
+-        final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final @Nullable Component display
+-    ) {
+-    // Canvas end - region threading
+-        if (display == null) {
+-            if (names.size() == 1) {
+-                source.sendSuccess(
+-                    () -> Component.translatable(
+-                        "commands.scoreboard.players.display.name.clear.success.single", getFirstTargetName(names), objective.getFormattedDisplayName()
+-                    ),
+-                    true
+-                );
+-            } else {
+-                source.sendSuccess(
+-                    () -> Component.translatable(
+-                        "commands.scoreboard.players.display.name.clear.success.multiple", names.size(), objective.getFormattedDisplayName()
+-                    ),
+-                    true
+-                );
+-            }
+-        } else if (names.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.display.name.set.success.single", display, getFirstTargetName(names), objective.getFormattedDisplayName()
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.display.name.set.success.multiple", display, names.size(), objective.getFormattedDisplayName()
+-                ),
+-                true
+-            );
+-        }
+-
+-        return display == null
+-            ? tracker.sendFeedback(source, true, RESPONSE_DISPLAY_CLEAR, objective)
+-            : tracker.sendFeedback(source, true, RESPONSE_DISPLAY_SET, objective, display);
+     }
+ 
+     private static int setScoreNumberFormat(
+-        final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final @Nullable NumberFormat numberFormat
+-    ) throws CommandSyntaxException { // Canvas - region threading
++        final CommandSourceStack source, final Collection<ScoreHolder> targets, final Objective objective, final @Nullable NumberFormat numberFormat
++    ) throws CommandSyntaxException {
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-    // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._void()
+-            .with(names.stream().map(SCORE_HOLDER2ENTITY))
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> tracker -> {
+                 scoreboard.getOrCreatePlayerScore(entity, objective).numberFormatOverride(numberFormat);
+-                return (_) -> null;
++                tracker.track(entity);
++                return tracker;
+             })
+-            .onComplete((_, filtered, css) -> setScoreNumberFormatCallback(css, filtered.stream().map(ScoreHolder.class::cast).toList(), objective, numberFormat))
++            .onComplete((tracker, processed, css) -> numberFormat == null
++                ? tracker.sendFeedback(css, true, RESPONSE_NUMBER_FORMAT_CLEAR, objective)
++                : tracker.sendFeedback(css, true, RESPONSE_NUMBER_FORMAT_SET, objective))
+             .start(source);
+         return 1;
+     }
+ 
+-    private static int setScoreNumberFormatCallback(
+-        final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final @Nullable NumberFormat numberFormat
+-    ) {
+-    // Canvas end - region threading
+-        if (numberFormat == null) {
+-            if (names.size() == 1) {
+-                source.sendSuccess(
+-                    () -> Component.translatable(
+-                        "commands.scoreboard.players.display.numberFormat.clear.success.single", getFirstTargetName(names), objective.getFormattedDisplayName()
+-                    ),
+-                    true
+-                );
+-            } else {
+-                source.sendSuccess(
+-                    () -> Component.translatable(
+-                        "commands.scoreboard.players.display.numberFormat.clear.success.multiple", names.size(), objective.getFormattedDisplayName()
+-                    ),
+-                    true
+-                );
+-            }
+-        } else if (names.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.display.numberFormat.set.success.single", getFirstTargetName(names), objective.getFormattedDisplayName()
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.display.numberFormat.set.success.multiple", names.size(), objective.getFormattedDisplayName()
+-                ),
+-                true
+-            );
+-        }
+-
+-        return numberFormat == null
+-            ? tracker.sendFeedback(source, true, RESPONSE_NUMBER_FORMAT_CLEAR, objective)
+-            : tracker.sendFeedback(source, true, RESPONSE_NUMBER_FORMAT_SET, objective);
+-    }
+-
+-    // Canvas start - region threading
+-    private static int addScore(final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final int value) throws CommandSyntaxException {
++    private static int addScore(final CommandSourceStack source, final Collection<ScoreHolder> targets, final Objective objective, final int value) throws CommandSyntaxException {
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._int()
+-            .with(names.stream().map(SCORE_HOLDER2ENTITY))
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> tracker -> {
+                 ScoreAccess score = scoreboard.getOrCreatePlayerScore(entity, objective);
+                 score.set(score.get() + value);
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.addInt(score.get());
++                tracker.track(entity, score.get());
++                return tracker;
+             })
+-            .onComplete((result, filtered, css) -> addScoreCallback(result, css, filtered.stream().map(ScoreHolder.class::cast).toList(), objective, value))
++            .onComplete((tracker, processed, css) -> tracker.sendFeedback(css, true, CommandResponseTracker.ElementType.ANY, RESPONSE_SCORE_ADD, objective, value))
+             .start(source);
+         return 1;
+     }
+ 
+-    private static int addScoreCallback(
+-        final int result, final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final int value
+-    ) {
+-    // Canvas end - region threading
+-        if (names.size() == 1) {
+-            int finalResult = result;
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.add.success.single", value, objective.getFormattedDisplayName(), getFirstTargetName(names), finalResult
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.scoreboard.players.add.success.multiple", value, objective.getFormattedDisplayName(), names.size()),
+-                true
+-            );
+-        }
+-
+-        return result;
+-    }
+-
+-    // Canvas start - region threading
+-    private static int removeScore(final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final int value) throws CommandSyntaxException {
++    private static int removeScore(final CommandSourceStack source, final Collection<ScoreHolder> targets, final Objective objective, final int value) throws CommandSyntaxException {
+         Scoreboard scoreboard = source.getServer().getScoreboard();
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution._int()
+-            .with(names.stream().map(SCORE_HOLDER2ENTITY))
+-            .executes((net.minecraft.world.entity.Entity entity) -> {
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ScoreHolder>, net.minecraft.world.entity.Entity>_abstract(CommandResponseTracker.create())
++            .with(targets.stream().map(SCORE_HOLDER2ENTITY))
++            .executes(entity -> tracker -> {
+                 ScoreAccess score = scoreboard.getOrCreatePlayerScore(entity, objective);
+                 score.set(score.get() - value);
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.addInt(score.get());
++                tracker.track(entity, score.get());
++                return tracker;
+             })
+-            .onComplete((result, filtered, css) -> removeScoreCallback(result, css, filtered.stream().map(ScoreHolder.class::cast).toList(), objective, value))
++            .onComplete((tracker, processed, css) -> tracker.sendFeedback(css, true, CommandResponseTracker.ElementType.ANY, RESPONSE_SCORE_REMOVE, objective, value))
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int removeScoreCallback(
+-        final int result, final CommandSourceStack source, final Collection<ScoreHolder> names, final Objective objective, final int value
+-    ) {
+-    // Canvas end - region threading
+-        if (names.size() == 1) {
+-            int finalResult = result;
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.scoreboard.players.remove.success.single", value, objective.getFormattedDisplayName(), getFirstTargetName(names), finalResult
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.scoreboard.players.remove.success.multiple", value, objective.getFormattedDisplayName(), names.size()),
+-                true
+-            );
+-        }
+-
+-        return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.ANY, RESPONSE_SCORE_REMOVE, objective, value);
++        // Canvas end - region threading
+     }
+ 
+     private static int listTrackedPlayers(final CommandSourceStack source) {

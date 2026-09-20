@@ -1,0 +1,80 @@
+--- a/net/minecraft/server/commands/RecipeCommand.java
++++ b/net/minecraft/server/commands/RecipeCommand.java
+@@ -92,65 +_,29 @@
+ 
+     private static int giveRecipes(final CommandSourceStack source, final Collection<ServerPlayer> players, final Collection<RecipeHolder<?>> recipes) throws CommandSyntaxException {
+     // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.<ServerPlayer>_int()
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ServerPlayer>, ServerPlayer>_abstract(CommandResponseTracker.create())
+             .with(players)
+-            .executes((ServerPlayer entityPlayer) -> {
+-                int addedRecipes = entityPlayer.awardRecipes(recipes);
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.addInt(addedRecipes);
++            .executes(player -> response -> {
++                response.track(player, player.awardRecipes(recipes));
++                return response;
+             })
+-            .onComplete((success, selected, css) -> giveCallback(success, css, selected, recipes))
++            .onComplete((response, selected, css) -> response.sendFeedback(css, true, RESPONSE_GIVE))
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int giveCallback(
+-        final int success, final CommandSourceStack source, final Collection<? extends ServerPlayer> players, final Collection<RecipeHolder<?>> recipes
+-    ) throws CommandSyntaxException {
+-    // Canvas end - region threading
+-        if (success == 0) {
+-            throw ERROR_GIVE_FAILED.create();
+-        }
+-
+-        if (players.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.recipe.give.success.single", recipes.size(), players.iterator().next().getDisplayName()), true
+-            );
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.recipe.give.success.multiple", recipes.size(), players.size()), true);
+-        }
+-
+-        return success;
+     }
+ 
+     private static int takeRecipes(final CommandSourceStack source, final Collection<ServerPlayer> players, final Collection<RecipeHolder<?>> recipes) throws CommandSyntaxException {
+     // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.<ServerPlayer>_int()
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ServerPlayer>, ServerPlayer>_abstract(CommandResponseTracker.create())
+             .with(players)
+-            .executes((ServerPlayer entityPlayer) -> {
+-                int removedRecipes = entityPlayer.resetRecipes(recipes);
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.addInt(removedRecipes);
++            .executes(player -> response -> {
++                response.track(player, player.resetRecipes(recipes));
++                return response;
+             })
+-            .onComplete((success, selected, css) -> takeCallback(success, css, selected, recipes))
++            .onComplete((response, selected, css) -> response.sendFeedback(css, true, RESPONSE_TAKE))
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int takeCallback(
+-        final int success, final CommandSourceStack source, final Collection<? extends ServerPlayer> players, final Collection<RecipeHolder<?>> recipes
+-    ) throws CommandSyntaxException {
+-    // Canvas end - region threading
+-        if (success == 0) {
+-            throw ERROR_TAKE_FAILED.create();
+-        }
+-
+-        if (players.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.recipe.take.success.single", recipes.size(), players.iterator().next().getDisplayName()), true
+-            );
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.recipe.take.success.multiple", recipes.size(), players.size()), true);
+-        }
+-
+-        return response.sendFeedback(source, true, RESPONSE_TAKE);
+     }
+ }

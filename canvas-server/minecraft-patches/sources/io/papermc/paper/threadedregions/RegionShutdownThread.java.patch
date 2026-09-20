@@ -1,0 +1,13 @@
+--- a/io/papermc/paper/threadedregions/RegionShutdownThread.java
++++ b/io/papermc/paper/threadedregions/RegionShutdownThread.java
+@@ -154,8 +_,9 @@
+                     if (!player.containerMenu.getCarried().isEmpty()) {
+                         ItemStack carried = player.containerMenu.getCarried();
+                         player.containerMenu.setCarried(ItemStack.EMPTY);
+-                        player.drop(carried, false);
++                        player.drop(carried, false, net.minecraft.util.Prediction.SERVER_ONLY);
+                     }
++                    if (player.canvas$isTemporarilyBlocking) player.releaseUsingItem(); // Canvas - implement sword blocking
+                 } catch (final Throwable thrown) {
+                     LOGGER.error("Failed to close player inventory for player: {}", player, thrown);
+                 }

@@ -1,0 +1,16 @@
+--- a/net/minecraft/network/protocol/game/ServerboundChatPacket.java
++++ b/net/minecraft/network/protocol/game/ServerboundChatPacket.java
+@@ -12,6 +_,13 @@
+ 
+ public record ServerboundChatPacket(String message, Instant timeStamp, long salt, Optional<MessageSignature> signature, LastSeenMessages.Update lastSeenMessages)
+     implements Packet<ServerGamePacketListener> {
++    // Canvas start - no chat reports
++    @Override
++    public Optional<MessageSignature> signature() {
++        return io.canvasmc.canvas.GlobalConfiguration.getInstance().chat.disableChatReporting ? Optional.empty() : signature;
++    }
++    // Canvas end - no chat reports
++
+     public static final StreamCodec<FriendlyByteBuf, ServerboundChatPacket> STREAM_CODEC = StreamCodec.composite(
+         ByteBufCodecs.stringUtf8(256),
+         ServerboundChatPacket::message,

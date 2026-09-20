@@ -1,0 +1,25 @@
+--- a/net/minecraft/server/commands/EffectCommands.java
++++ b/net/minecraft/server/commands/EffectCommands.java
+@@ -223,6 +_,22 @@
+             throw ERROR_GIVE_FAILED.create();
+         }
+ 
++        if (entities.size() == 1) {
++            source.sendSuccess(
++                () -> Component.translatable(
++                    "commands.effect.give.success.single", effect.getDisplayName(), entities.iterator().next().getDisplayName(), duration / 20
++                ),
++                true
++            );
++        } else {
++            source.sendSuccess(
++                () -> Component.translatable("commands.effect.give.success.multiple", effect.getDisplayName(), entities.size(), duration / 20), true
++            );
++        }
++
++        return count;
++    }
++
+     private static int computeDurationInTicks(final @Nullable Integer seconds, final MobEffect effect) {
+         if (seconds != null) {
+             if (effect.isInstantaneous()) {

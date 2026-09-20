@@ -1,0 +1,43 @@
+--- a/net/minecraft/util/context/ContextMap.java
++++ b/net/minecraft/util/context/ContextMap.java
+@@ -1,6 +_,5 @@
+ package net.minecraft.util.context;
+ 
+-import com.google.common.collect.Sets;
+ import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+ import java.util.Map;
+ import java.util.NoSuchElementException;
+@@ -67,17 +_,22 @@
+         }
+ 
+         public ContextMap buildAndValidate(final ContextKeySet paramSet) {
+-            Set<ContextKey<?>> notAllowed = Sets.difference(this.params.keySet(), paramSet.allowed());
+-            if (!notAllowed.isEmpty()) {
+-                throw new IllegalArgumentException("Parameters not allowed in this parameter set: " + notAllowed);
+-            } else {
+-                Set<ContextKey<?>> missingRequired = Sets.difference(paramSet.required(), this.params.keySet());
+-                if (!missingRequired.isEmpty()) {
+-                    throw new IllegalArgumentException("Missing required parameters: " + missingRequired);
+-                } else {
+-                    return this.build();
+-                }
+-            }
++            // Leaf start - optimize ContextMap validation
++            final Set<ContextKey<?>> allowed = paramSet.allowed();
++            for (ContextKey<?> key : this.params.keySet()) {
++                if (!allowed.contains(key)) {
++                    throw new IllegalArgumentException("Parameter not allowed in this parameter set: " + key);
++                }
++            }
++
++            for (ContextKey<?> key : paramSet.required()) {
++                if (!this.params.containsKey(key)) {
++                    throw new IllegalArgumentException("Missing required parameter: " + key);
++                }
++            }
++
++            return this.build();
++            // Leaf end - optimize ContextMap validation
+         }
+     }
+ }

@@ -1,0 +1,18 @@
+--- a/net/minecraft/world/entity/ai/behavior/JumpOnBed.java
++++ b/net/minecraft/world/entity/ai/behavior/JumpOnBed.java
+@@ -100,13 +_,13 @@
+         return this.isJumpable(level, body.blockPosition());
+     }
+ 
+-    private boolean isBed(final ServerLevel level, final BlockPos bodyPos) {
++    private boolean isJumpable(final ServerLevel level, final BlockPos bodyPos) {
+         // Canvas start - region threading
+         if (!level.hasChunkAt(bodyPos)) {
+             return false;
+         }
+         // Canvas end - region threading
+-        return level.getBlockState(bodyPos).is(BlockTags.BEDS);
++        return level.getBlockState(bodyPos).is(BlockTags.VILLAGER_BABIES_CAN_JUMP_ON_BED);
+     }
+ 
+     private Optional<BlockPos> getNearestBed(final Mob body) {

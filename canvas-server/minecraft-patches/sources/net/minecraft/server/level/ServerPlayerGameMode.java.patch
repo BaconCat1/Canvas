@@ -1,0 +1,26 @@
+--- a/net/minecraft/server/level/ServerPlayerGameMode.java
++++ b/net/minecraft/server/level/ServerPlayerGameMode.java
+@@ -572,17 +_,15 @@
+             }
+ 
+             if (state.getBlock() instanceof Portal portal) {
++                // Canvas start - spectator portals must use the region-safe transfer path
+                 ServerLevel serverLevel = player.level();
+-                TeleportTransition teleportTransition = portal.getPortalDestination(serverLevel, player, pos);
+-                if (teleportTransition != null) {
+-                    if (player.getCamera() != player) {
+-                        player.setCamera(player);
+-                    }
+-
+-                    player.teleportToPortalDestination(serverLevel, teleportTransition);
+-                } else {
++                if (player.getCamera() != player) {
++                    player.setCamera(player);
++                }
++                if (!portal.portalAsync(serverLevel, player, pos)) {
+                     player.sendOverlayMessage(Component.translatable("spectator.cannot_teleport").withStyle(ChatFormatting.RED));
+                 }
++                // Canvas end - spectator portals must use the region-safe transfer path
+ 
+                 return InteractionResult.CONSUME;
+             } else {

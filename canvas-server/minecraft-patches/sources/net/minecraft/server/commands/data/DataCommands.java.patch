@@ -1,0 +1,11 @@
+--- a/net/minecraft/server/commands/data/DataCommands.java
++++ b/net/minecraft/server/commands/data/DataCommands.java
+@@ -61,7 +_,7 @@
+     private static final Dynamic2CommandExceptionType ERROR_INVALID_SUBSTRING = new Dynamic2CommandExceptionType(
+         (start, end) -> Component.translatableEscape("commands.data.modify.invalid_substring", start, end)
+     );
+-    public static final List<Function<String, DataCommands.DataProvider>> ALL_PROVIDERS = ImmutableList.of(
++    public static final List<ArgProvider.Factory<DataAccessor>> ALL_PROVIDERS = List.of(
+         EntityDataAccessor.PROVIDER, BlockDataAccessor.PROVIDER // StorageDataAccessor.PROVIDER // Canvas - region threading
+     );
+     public static final List<ArgProvider<DataAccessor>> TARGET_PROVIDERS = ArgProvider.buildList("target", ALL_PROVIDERS);

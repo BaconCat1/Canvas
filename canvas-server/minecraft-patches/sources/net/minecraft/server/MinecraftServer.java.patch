@@ -1,0 +1,198 @@
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1036,7 +_,7 @@
+         this.shutdownThread = Thread.currentThread(); // Paper - Improved watchdog support
+         org.spigotmc.WatchdogThread.doStop(); // Paper - Improved watchdog support
+         // CraftBukkit end
+-        this.packetProcessor.close();
++        // this.packetProcessor.close(); // Folia - region threading
+ 
+         LOGGER.info("Stopping server");
+         Commands.COMMAND_SENDING_POOL.shutdownNow(); // Paper - Perf: Async command map building; Shutdown and don't bother finishing
+@@ -1307,11 +_,7 @@
+                 LOGGER.info("*************************************************************************************");
+             }
+             // Paper end - Add onboarding message for initial server start
+-            // Paper start - Improve outdated version checking
+-            if (System.getProperty("paper.disableStartupVersionCheck") == null && io.papermc.paper.configuration.GlobalConfiguration.get().updateChecker.enabled) {
+-                CompletableFuture.runAsync(com.destroystokyo.paper.PaperVersionFetcher::getUpdateStatusStartupMessage, io.papermc.paper.util.MCUtil.ASYNC_EXECUTOR);
+-            }
+-            // Paper end - Improve outdated version checking
++            // Canvas - Rebrand
+ 
+             while (this.running) {
+                 final long tickStart = System.nanoTime(); // Paper - improve tick loop
+@@ -1665,7 +_,7 @@
+         if (playerSaveInterval < 0) {
+             playerSaveInterval = this.autosavePeriod;
+         }
+-        final boolean fullSave = this.autosavePeriod > 0 && this.tickCount % this.autosavePeriod == 0;
++        final boolean fullSave = this.autosavePeriod > 0 && io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() % this.autosavePeriod == 0;
+         try {
+             this.isSaving = true;
+             if (io.canvasmc.canvas.GlobalConfiguration.getInstance().autosave.autosavePlayers && playerSaveInterval > 0) { // Canvas - region threading
+@@ -1684,20 +_,13 @@
+         }
+         // Paper end - Incremental chunk and player saving
+ 
+-        this.server.spark.executeMainThreadTasks(); // Paper - spark
++        // this.server.spark.executeMainThreadTasks(); // Paper - spark // Folia - region threading
+         // Paper start - Server Tick Events
+         long endTime = System.nanoTime();
+         long remaining = scheduledEnd - endTime; // Folia - region threading
+         new com.destroystokyo.paper.event.server.ServerTickEndEvent((int)io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick(), ((double)(endTime - startTime) / 1000000D), remaining).callEvent(); // Folia - region threading
+         // Paper end - Server Tick Events
+-        this.server.spark.tickEnd(((double)(endTime - this.currentTickStart) / 1000000D)); // Paper - spark
+-        long tickTime = Util.getNanos() - nano;
+-        int tickIndex = this.tickCount % 100;
+-        this.aggregatedTickTimesNanos = this.aggregatedTickTimesNanos - this.tickTimesNanos[tickIndex];
+-        this.aggregatedTickTimesNanos += tickTime;
+-        this.tickTimesNanos[tickIndex] = tickTime;
+-        this.smoothedTickTimeMillis = this.smoothedTickTimeMillis * 0.8F + (float)tickTime / (float)TimeUtil.NANOSECONDS_PER_MILLISECOND * 0.19999999F;
+-        this.logTickMethodTime(nano);
++        this.server.spark.tickEnd(((double)(endTime - startTime) / 1000000D)); // Paper - spark // Folia - region threading
+     }
+ 
+     protected void processPacketsAndTick(final boolean sprinting) {
+@@ -1778,9 +_,12 @@
+ 
+     // Folia - region threading - moved to regionized data
+ 
+-    protected void tickChildren(final BooleanSupplier haveTime) {
+-        this.getPlayerList().getPlayers().forEach(playerx -> playerx.connection.suspendFlushing());
+-        this.server.getScheduler().mainThreadHeartbeat(); // CraftBukkit
++    protected void tickChildren(final BooleanSupplier haveTime, final io.papermc.paper.threadedregions.TickRegions.TickRegionData region) {
++        final io.papermc.paper.threadedregions.RegionizedWorldData regionizedWorldData = io.papermc.paper.threadedregions.TickRegionScheduler.getCurrentRegionizedWorldData();
++        final List<ServerPlayer> suspendedFlushes = new java.util.ArrayList<>(regionizedWorldData.getLocalPlayers());
++        for (ServerPlayer player : suspendedFlushes) {
++            player.connection.suspendFlushing();
++        }
+         // Paper start - optimise Folia entity scheduler
+         //((io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler)org.bukkit.Bukkit.getGlobalRegionScheduler()).tick(); // Folia - region threading - moved to global tick
+         /* // Folia start - region threading - move to tickRegion
+@@ -1794,10 +_,8 @@
+         // Paper end - optimise Folia entity scheduler
+         */ // Folia end - region threading - move to tickRegion
+         // Paper end - Folia scheduler API
+-        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue(this.tickCount); // Paper
+-        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue(this.tickCount); // Paper
+-        this.getFunctions().tick();
+-        if (this.tickRateManager.runsNormally()) {
++        // Click queues and functions tick on the global region.
++        if (false && this.tickRateManager.runsNormally()) {
+             // Paper start - per-world time
+             if (io.papermc.paper.configuration.GlobalConfiguration.get().time.affectsAllWorlds) {
+                 this.clockManager.tick();
+@@ -1809,7 +_,7 @@
+             // Paper end - per-world time
+         }
+ 
+-        if (this.tickCount % 20 == 0) {
++        if (true) {
+             this.forceGameTimeSynchronization();
+         }
+ 
+@@ -1819,14 +_,25 @@
+             this.processQueue.remove().run();
+         }
+ 
++        region.world.getCurrentWorldData().getCanvasWorldData().tpsbar.tick();
++        region.world.getCurrentWorldData().getCanvasWorldData().rambar.tick();
++
+         this.updateEffectiveRespawnData();
+ 
+-        this.isIteratingOverLevels = true; // Paper - Throw exception on world create while being ticked
+-        for (ServerLevel level : this.getAllLevels()) {
+-            level.hasPhysicsEvent = org.bukkit.event.block.BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - BlockPhysicsEvent
+-            level.hasEntityMoveEvent = io.papermc.paper.event.entity.EntityMoveEvent.getHandlerList().getRegisteredListeners().length > 0; // Paper - Add EntityMoveEvent
+-            level.updateLagCompensationTick(); // Paper - lag compensation
+-            net.minecraft.world.level.block.entity.HopperBlockEntity.skipHopperEvents = level.paperConfig().hopper.disableMoveEvent || org.bukkit.event.inventory.InventoryMoveItemEvent.getHandlerList().getRegisteredListeners().length == 0; // Paper - Perf: Optimize Hoppers
++        region.canvas$saveAllTicket.consumeIfPresent(ticket -> {
++            try {
++                ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel) region.world).moonrise$getChunkTaskScheduler().chunkHolderManager.saveAllChunksRegionised(
++                    ticket.flush(), false, false, false, false, true, false
++                );
++                this.getPlayerList().saveAll();
++            } catch (final Throwable thrown) {
++                ticket.exceptionPropagator().accept(thrown);
++            } finally {
++                ticket.callback().run();
++            }
++        });
++
++        if (true) { ServerLevel level = region.world;
+ 
+             try {
+                 level.tick(haveTime, region); // Folia - region threading
+@@ -1836,24 +_,16 @@
+                 throw new ReportedException(report);
+             }
+ 
+-            level.explosionDensityCache.clear(); // Paper - Optimize explosions
++            regionizedWorldData.explosionDensityCache.clear(); // Paper - Optimize explosions // Folia - region threading
+         }
+         // this.isIteratingOverLevels = false; // Paper - Throw exception on world create while being ticked // Folia - region threading
+ 
+-        this.tickConnection();
+-        this.playerList.tick();
+-        this.debugSubscribers.tick();
+-        if (this.tickRateManager.runsNormally()) {
+-            GameTestTicker.SINGLETON.tick();
+-        } */
+-
+-        for (Runnable tickable : this.tickables) {
+-            tickable.run();
+-        } */
+-        // Folia & Canvas end - region threading
+-
+-        for (ServerPlayer player : this.playerList.getPlayers()) {
+-            player.connection.chunkSender.sendNextChunks(player);
++        regionizedWorldData.tickConnections();
++
++        for (ServerPlayer player : suspendedFlushes) {
++            if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(player)) {
++                continue;
++            }
+             player.connection.resumeFlushing();
+         }
+ 
+@@ -1874,11 +_,15 @@
+     }
+ 
+     public void forceGameTimeSynchronization() {
+-        // Paper start - per-world time
+-        for (ServerLevel level : this.getAllLevels()) {
+-            this.playerList.broadcastAll(new ClientboundSetTimePacket(level.getGameTime(), Map.of()), level.dimension());
++        // Folia start - region threading
++        final io.papermc.paper.threadedregions.RegionizedWorldData worldData = io.papermc.paper.threadedregions.TickRegionScheduler.getCurrentRegionizedWorldData();
++        ClientboundSetTimePacket timePacket = new ClientboundSetTimePacket(worldData.world.getGameTime(), Map.of());
++        for (ServerPlayer player : worldData.getLocalPlayers()) {
++            if ((io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() + player.getId()) % 20 == 0) {
++                player.connection.send(timePacket);
++            }
+         }
+-        // Paper end - per-world time
++        // Folia end - region threading
+     }
+ 
+     public void addTickable(final Runnable tickable) {
+@@ -1944,7 +_,7 @@
+     }
+ 
+     public String getServerModName() {
+-        return io.papermc.paper.ServerBuildInfo.buildInfo().brandName(); // Paper
++        return io.canvasmc.canvas.GlobalConfiguration.getInstance().serverModName; // Canvas - Use configurable server branding
+     }
+ 
+     public ServerClockManager clockManager() {
+@@ -2264,6 +_,10 @@
+ 
+     public int getCompressionThreshold() {
+         return 256;
++    }
++
++    public boolean canvas$ncrEnforceSecureProfile() {
++        return !io.canvasmc.canvas.GlobalConfiguration.getInstance().chat.disableChatReporting && this.enforceSecureProfile();
+     }
+ 
+     public boolean enforceSecureProfile() {

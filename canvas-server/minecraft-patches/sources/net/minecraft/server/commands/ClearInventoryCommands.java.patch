@@ -1,0 +1,49 @@
+--- a/net/minecraft/server/commands/ClearInventoryCommands.java
++++ b/net/minecraft/server/commands/ClearInventoryCommands.java
+@@ -74,29 +_,25 @@
+         final CommandSourceStack source, final Collection<ServerPlayer> players, final Predicate<ItemStack> predicate, final int maxCount
+     ) throws CommandSyntaxException {
+     // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.<ServerPlayer>_int()
++        final boolean countingOnly = maxCount == 0;
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ServerPlayer>, ServerPlayer>_abstract(CommandResponseTracker.create())
+             .with(players)
+-            .executes((ServerPlayer entityPlayer) -> {
+-                int count = entityPlayer.getInventory().clearOrCountMatchingItems(predicate, maxCount, entityPlayer.inventoryMenu.getCraftSlots());
+-                entityPlayer.containerMenu.broadcastChanges();
+-                entityPlayer.inventoryMenu.slotsChanged(entityPlayer.getInventory());
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.addInt(count);
+-            })
+-            .onComplete((count, _, css) -> callback(count, players, maxCount, css))
++            .executes(player -> tracker -> {
++                tracker.track(player, player.getInventory().clearOrCountMatchingItems(predicate, countingOnly, maxCount, player.inventoryMenu.getCraftSlots()));
++                if (!countingOnly) {
++                    player.containerMenu.broadcastChanges();
++                    player.inventoryMenu.slotsChanged(player.getInventory());
++                }
++                return tracker;
++            })
++            .onComplete((tracker, selected, css) -> {
++                if (tracker.totalValue() == 0) {
++                    throw (CommandSyntaxException) tracker.dispatch(CommandResponseTracker.ElementType.ANY, ERROR_DISPATCH);
++                }
++                return tracker.sendFeedback(css, true, CommandResponseTracker.ElementType.NON_ZERO, countingOnly ? RESPONSE_TEST : RESPONSE_CLEAR);
++            })
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int callback(final int count, final Collection<ServerPlayer> players, final int maxCount, final CommandSourceStack source) throws CommandSyntaxException {
+-    // Canvas end - region threading
+-        if (count == 0) {
+-            if (players.size() == 1) {
+-                throw ERROR_SINGLE.create(players.iterator().next().getName());
+-            } else {
+-                throw ERROR_MULTIPLE.create(players.size());
+-            }
+-        } else {
+-            return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.NON_ZERO, maxCount == 0 ? RESPONSE_TEST : RESPONSE_CLEAR);
+-        }
+     }
+ }

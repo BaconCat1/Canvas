@@ -1,0 +1,56 @@
+--- a/net/minecraft/world/clock/ServerClockManager.java
++++ b/net/minecraft/world/clock/ServerClockManager.java
+@@ -69,7 +_,7 @@
+ 
+         this.clocks = com.google.common.collect.ImmutableMap.copyOf(this.clocks);
+ 
+-        for (final ServerClockManager.ClockInstance value : this.clocks.values()) {
++        for (final ServerClockManager.ServerClockInstance value : this.clocks.values()) {
+             value.timeMarkers = com.google.common.collect.ImmutableMap.copyOf(value.timeMarkers);
+         }
+         // Canvas end - region threading
+@@ -81,7 +_,7 @@
+ 
+     public PackedClockStates packState() {
+         io.canvasmc.canvas.util.TickGuard.ensureGlobalOrStartup("Cannot pack clocks async"); // Canvas - region threading
+-        return new PackedClockStates(Util.mapValues(this.clocks, ServerClockManager.ClockInstance::packState));
++        return new PackedClockStates(Util.mapValues(this.clocks, ServerClockManager.ServerClockInstance::packState));
+     }
+ 
+     public void tick() {
+@@ -127,6 +_,12 @@
+         return result.get();
+     }
+ 
++    public java.util.OptionalLong getTotalTicksToTimeMarker(final Holder<WorldClock> clock, final ResourceKey<ClockTimeMarker> timeMarkerId) {
++        final ServerClockManager.ServerClockInstance instance = this.getInstance(clock);
++        final ClockTimeMarker timeMarker = instance.timeMarkers.get(timeMarkerId);
++        return timeMarker == null ? java.util.OptionalLong.empty() : java.util.OptionalLong.of(timeMarker.resolveTimeToMoveTo(instance.totalTicks));
++    }
++
+     // Paper start - time skip event
+     public record TimerMove(long currentTime, long targetTime) {
+ 
+@@ -156,9 +_,9 @@
+         this.modifyClock(clock, instance -> instance.rate = rate);
+     }
+ 
+-    private void modifyClock(final Holder<WorldClock> clock, final Consumer<? super ServerClockManager.ClockInstance> action) {
++    private void modifyClock(final Holder<WorldClock> clock, final Consumer<? super ServerClockManager.ServerClockInstance> action) {
+         io.papermc.paper.threadedregions.RegionizedServer.ensureGlobalTickThread("Cannot modify clock async"); // Canvas - region threading
+-        ServerClockManager.ClockInstance instance = this.getInstance(clock);
++        ServerClockManager.ServerClockInstance instance = this.getInstance(clock);
+         action.accept(instance);
+         // Paper start - per-world time
+         this.broadcastUpdates(clock, instance);
+@@ -172,6 +_,10 @@
+         }
+         }
+         // Paper end - per-world time
++    }
++
++    public long getTotalTicks(final Holder<WorldClock> definition) {
++        return this.getInstance(definition).totalTicks;
+     }
+ 
+     public ClientboundSetTimePacket createFullSyncPacket() {

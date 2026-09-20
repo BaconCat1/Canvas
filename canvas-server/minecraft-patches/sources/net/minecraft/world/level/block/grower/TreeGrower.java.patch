@@ -1,0 +1,11 @@
+--- a/net/minecraft/world/level/block/grower/TreeGrower.java
++++ b/net/minecraft/world/level/block/grower/TreeGrower.java
+@@ -233,7 +_,7 @@
+     }
+ 
+     // CraftBukkit start
+-    private void setTreeType(Holder<ConfiguredFeature<?, ?>> feature) {
++    private void setTreeType(final Holder<Feature> feature) {
+         org.bukkit.TreeType treeType; // Folia - region threading
+         if (feature.is(TreeFeatures.OAK) || feature.is(TreeFeatures.OAK_BEES_005)) {
+             treeType = org.bukkit.TreeType.TREE; // Folia - region threading

@@ -1,0 +1,26 @@
+--- a/net/minecraft/world/entity/npc/villager/Villager.java
++++ b/net/minecraft/world/entity/npc/villager/Villager.java
+@@ -825,17 +_,14 @@
+     }
+ 
+     private int countFoodPointsInInventory() {
+-        SimpleContainer inventory = this.getInventory();
+-        int points = 0;
+-
+-        for (ItemStack item : inventory.getItems()) {
+-            VillagerFood villagerFood = item.get(DataComponents.VILLAGER_FOOD);
+-            if (villagerFood != null) {
+-                points += item.count() * villagerFood.nutrition();
++        int sum = 0;
++        for (ItemStack item : this.getInventory().getItems()) {
++            VillagerFood food = item.get(DataComponents.VILLAGER_FOOD);
++            if (food != null) {
++                sum += item.count() * food.nutrition();
+             }
+         }
+-
+-        return points;
++        return sum;
+     }
+ 
+     public boolean hasFarmSeeds() {

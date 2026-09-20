@@ -1,0 +1,22 @@
+--- a/net/minecraft/world/inventory/AbstractContainerMenu.java
++++ b/net/minecraft/world/inventory/AbstractContainerMenu.java
+@@ -725,12 +_,13 @@
+     }
+ 
+     private static void dropOrPlaceInInventory(final Player player, final ItemStack carried) {
+-        boolean playerRemovedNotChangingDimension = (player.getHealth() <= 0.0f) || (player.isRemoved() && player.getRemovalReason() != Entity.RemovalReason.CHANGED_DIMENSION); // Folia - region threading
+-        boolean serverPlayerHasDisconnected = player instanceof ServerPlayer serverPlayer && serverPlayer.hasDisconnected();
+-        if (playerRemovedNotChangingDimension || serverPlayerHasDisconnected) {
+-            player.drop(carried, false);
+-        } else if (player instanceof ServerPlayer) {
+-            player.getInventory().placeItemBackInInventory(carried);
++        if (player instanceof ServerPlayer serverPlayer) {
++            boolean playerRemovedNotChangingDimension = !serverPlayer.isAlive() && serverPlayer.getRemovalReason() != Entity.RemovalReason.CHANGED_DIMENSION;
++            if (playerRemovedNotChangingDimension || serverPlayer.hasDisconnected()) {
++                serverPlayer.drop(carried, false, Prediction.SERVER_ONLY);
++            } else {
++                serverPlayer.getInventory().placeItemBackInInventory(carried, Prediction.SERVER_ONLY);
++            }
+         }
+     }
+ 

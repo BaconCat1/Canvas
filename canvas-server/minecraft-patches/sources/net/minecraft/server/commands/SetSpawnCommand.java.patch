@@ -1,0 +1,75 @@
+--- a/net/minecraft/server/commands/SetSpawnCommand.java
++++ b/net/minecraft/server/commands/SetSpawnCommand.java
+@@ -101,64 +_,24 @@
+         ServerPlayer.RespawnConfig respawnConfig = new ServerPlayer.RespawnConfig(respawnData, true);
+ 
+     // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.<io.canvasmc.canvas.util.CollectingList<ServerPlayer>, ServerPlayer>
+-                _abstract(new io.canvasmc.canvas.util.CollectingList<>())
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ServerPlayer>, ServerPlayer>_abstract(CommandResponseTracker.create())
+             .with(targets)
+             .executes((ServerPlayer entityPlayer) -> {
+                 // Paper start - Add PlayerSetSpawnEvent
+                 boolean pass = entityPlayer.setRespawnPosition(
+-                    new ServerPlayer.RespawnConfig(LevelData.RespawnData.of(dimension, pos, yaw, pitch), true),
++                    respawnConfig,
+                     false,
+                     com.destroystokyo.paper.event.player.PlayerSetSpawnEvent.Cause.COMMAND
+                 );
+                 // Paper end - Add PlayerSetSpawnEvent
+-                return (list) -> pass ? list.add(entityPlayer) : list;
++                return tracker -> {
++                    if (pass) tracker.track(entityPlayer);
++                    return tracker;
++                };
+             })
+-            .onComplete((actualTargets, _, css) -> setSpawnCallback(actualTargets.copyOf(), pos, rotation, dimension, css, yaw, pitch))
++            .onComplete((tracker, selected, css) -> tracker.sendFeedback(css, true, RESPONSE_SET, respawnData))
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int setSpawnCallback(
+-        final Collection<ServerPlayer> actualTargets,
+-        final BlockPos pos,
+-        final Coordinates rotation,
+-        final ResourceKey<Level> dimension,
+-        final CommandSourceStack source,
+-        final float yaw,
+-        final float pitch
+-    ) {
+-    // Canvas end - region threading
+-        // Paper start - Add PlayerSetSpawnEvent
+-        if (actualTargets.isEmpty()) {
+-            return 0;
+-        }
+-        // Paper end - Add PlayerSetSpawnEvent
+-
+-        String dimensionName = dimension.identifier().toString();
+-        if (actualTargets.size() == 1) { // Paper - Add PlayerSetSpawnEvent
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.spawnpoint.success.single",
+-                    pos.getX(),
+-                    pos.getY(),
+-                    pos.getZ(),
+-                    yaw,
+-                    pitch,
+-                    dimensionName,
+-                    actualTargets.iterator().next().getDisplayName() // Paper - Add PlayerSetSpawnEvent
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.spawnpoint.success.multiple", pos.getX(), pos.getY(), pos.getZ(), yaw, pitch, dimensionName, actualTargets.size() // Paper - Add PlayerSetSpawnEvent
+-                ),
+-                true
+-            );
+-        }
+-
+-        return tracker.sendFeedback(source, true, RESPONSE_SET, respawnData);
+     }
+ }

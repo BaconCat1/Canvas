@@ -1,0 +1,73 @@
+--- a/net/minecraft/server/commands/ExperienceCommand.java
++++ b/net/minecraft/server/commands/ExperienceCommand.java
+@@ -131,7 +_,7 @@
+                 return (_) -> result;
+             })
+             .onComplete((result, targets, css) -> {
+-                css.sendSuccess(() -> Component.translatable("commands.experience.query." + type.name, targets.getFirst().getDisplayName(), result), false);
++                css.sendSuccess(() -> type.queryResponse(targets.getFirst(), result), false);
+                 return result;
+             })
+             .start(source);
+@@ -159,50 +_,30 @@
+         final Collection<? extends ServerPlayer> players,
+         final int amount,
+         final ExperienceCommand.Type type
+-    ) {
++    ) throws CommandSyntaxException {
+     // Canvas end - region threading
+-        if (players.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.experience.add." + type.name + ".success.single", amount, players.iterator().next().getDisplayName()),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.experience.add." + type.name + ".success.multiple", amount, players.size()), true);
++        CommandResponseTracker<ServerPlayer> tracker = CommandResponseTracker.create();
++        for (ServerPlayer player : players) {
++            tracker.track(player);
+         }
+-
+-        return players.size();
++        return tracker.sendFeedback(source, true, type.addResponse, amount);
+     }
+ 
+     private static int setExperience(
+         final CommandSourceStack source, final Collection<? extends ServerPlayer> players, final int amount, final ExperienceCommand.Type type
+     ) throws CommandSyntaxException {
+     // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.<ServerPlayer>_int()
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.<CommandResponseTracker<ServerPlayer>, ServerPlayer>_abstract(CommandResponseTracker.create())
+             .with(players)
+             .executes((ServerPlayer entityPlayer) -> {
+-                if (type.set.test(entityPlayer, amount)) {
+-                    return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.incrementInt();
+-                }
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.nothing();
++                return tracker -> {
++                    tracker.track(entityPlayer, type.set.test(entityPlayer, amount));
++                    return tracker;
++                };
+             })
+-            .onComplete((success, selected, css) -> setCallback(css, selected, amount, type, success))
++            .onComplete((tracker, selected, css) -> tracker.sendFeedback(css, true, type.setResponse, amount))
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int setCallback(
+-        final CommandSourceStack source,
+-        final Collection<? extends ServerPlayer> players,
+-        final int amount,
+-        final ExperienceCommand.Type type,
+-        final int success
+-    ) throws CommandSyntaxException {
+-    // Canvas end - region threading
+-        if (success == 0) {
+-            throw ERROR_SET_POINTS_INVALID.create();
+-        }
+-
+-        return tracker.sendFeedback(source, true, type.setResponse, amount);
+     }
+ 
+     private enum Type {

@@ -1,0 +1,19 @@
+--- a/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
++++ b/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
+@@ -503,16 +_,6 @@
+         this.setColorsDirty(x, y);
+     }
+ 
+-    public synchronized boolean isExplorationMap() { // Folia - make map data thread-safe
+-        for (MapDecoration decoration : this.decorations.values()) {
+-            if (decoration.type().value().explorationMapElement()) {
+-                return true;
+-            }
+-        }
+-
+-        return false;
+-    }
+-
+     public synchronized void addClientSideDecorations(final List<MapDecoration> decorations) { // Folia - make map data thread-safe
+         this.decorations.clear();
+         this.trackedDecorationCount = 0;

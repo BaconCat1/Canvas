@@ -1,0 +1,536 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Dueris <duerismc@gmail.com>
+Date: Mon, 20 Apr 2026 11:32:43 -0700
+Subject: [PATCH] Disable Criterion Trigger Config
+
+This is as a base feature patch since this contains 23 files of 1 line changes
+which is completely stupid to have for a single feature in single-file patches
+
+diff --git a/net/minecraft/advancements/triggers/AnyBlockInteractionTrigger.java b/net/minecraft/advancements/triggers/AnyBlockInteractionTrigger.java
+index c0228067d1955a6575e2377552adac2e25cdce64..ea49b256bffa2fca235ab8edb8ebf9b564725536 100644
+--- a/net/minecraft/advancements/triggers/AnyBlockInteractionTrigger.java
++++ b/net/minecraft/advancements/triggers/AnyBlockInteractionTrigger.java
+@@ -26,6 +26,7 @@ public class AnyBlockInteractionTrigger extends SimpleCriterionTrigger<AnyBlockI
+     }
+ 
+     public void trigger(final ServerPlayer player, final BlockPos pos, final ItemInstance tool) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         ServerLevel level = player.level();
+         BlockState state = level.getBlockState(pos);
+         BlockEntity blockEntity = level.getBlockEntity(pos);
+diff --git a/net/minecraft/advancements/triggers/BeeNestDestroyedTrigger.java b/net/minecraft/advancements/triggers/BeeNestDestroyedTrigger.java
+index 9c85075387b285f8472b3c6d39ccb266fd867469..72bded60deccfd31a0e9bf506747db44648c168d 100644
+--- a/net/minecraft/advancements/triggers/BeeNestDestroyedTrigger.java
++++ b/net/minecraft/advancements/triggers/BeeNestDestroyedTrigger.java
+@@ -24,6 +24,7 @@ public class BeeNestDestroyedTrigger extends SimpleCriterionTrigger<BeeNestDestr
+     }
+ 
+     public void trigger(final ServerPlayer player, final BlockState state, final ItemStack itemStack, final int numBeesInside) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(state, itemStack, numBeesInside));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/BredAnimalsTrigger.java b/net/minecraft/advancements/triggers/BredAnimalsTrigger.java
+index a9ea860c0ec362b46d89d8530f9a7982b99f6da5..40895fb80e88d4a8a844405534b3dd6686acb115 100644
+--- a/net/minecraft/advancements/triggers/BredAnimalsTrigger.java
++++ b/net/minecraft/advancements/triggers/BredAnimalsTrigger.java
+@@ -21,6 +21,7 @@ public class BredAnimalsTrigger extends SimpleCriterionTrigger<BredAnimalsTrigge
+     }
+ 
+     public void trigger(final ServerPlayer player, final Animal parent, final Animal partner, final @Nullable AgeableMob child) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext parentContext = EntityPredicate.createContext(player, parent);
+         LootContext partnerContext = EntityPredicate.createContext(player, partner);
+         LootContext childContext = child != null ? EntityPredicate.createContext(player, child) : null;
+diff --git a/net/minecraft/advancements/triggers/BrewedPotionTrigger.java b/net/minecraft/advancements/triggers/BrewedPotionTrigger.java
+index 07c19fd6b83ceb680b1427d6bc4b1a6a2e59328c..d7aa550761be97f379eb465c7e46b5dfcc98739a 100644
+--- a/net/minecraft/advancements/triggers/BrewedPotionTrigger.java
++++ b/net/minecraft/advancements/triggers/BrewedPotionTrigger.java
+@@ -16,6 +16,7 @@ public class BrewedPotionTrigger extends SimpleCriterionTrigger<BrewedPotionTrig
+     }
+ 
+     public void trigger(final ServerPlayer player, final PotionContents potion) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(potion));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/ChangeDimensionTrigger.java b/net/minecraft/advancements/triggers/ChangeDimensionTrigger.java
+index 7c2f625178f5ca860c533b9d34decd6361a4ecf7..266fdecd6fe85d7371ba9b26f26d4a84794ed434 100644
+--- a/net/minecraft/advancements/triggers/ChangeDimensionTrigger.java
++++ b/net/minecraft/advancements/triggers/ChangeDimensionTrigger.java
+@@ -17,6 +17,7 @@ public class ChangeDimensionTrigger extends SimpleCriterionTrigger<ChangeDimensi
+     }
+ 
+     public void trigger(final ServerPlayer player, final ResourceKey<Level> from, final ResourceKey<Level> to) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(from, to));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/ChanneledLightningTrigger.java b/net/minecraft/advancements/triggers/ChanneledLightningTrigger.java
+index 64119b26f1fb0b45d0f3cfb92093f902f97dea9b..b4c025e199c72a68a58d578321ce6f07bca4a866 100644
+--- a/net/minecraft/advancements/triggers/ChanneledLightningTrigger.java
++++ b/net/minecraft/advancements/triggers/ChanneledLightningTrigger.java
+@@ -22,6 +22,7 @@ public class ChanneledLightningTrigger extends SimpleCriterionTrigger<ChanneledL
+     }
+ 
+     public void trigger(final ServerPlayer player, final Collection<? extends Entity> victims) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         List<LootContext> victimsContexts = victims.stream().map(v -> EntityPredicate.createContext(player, v)).collect(Collectors.toList());
+         this.trigger(player, t -> t.matches(victimsContexts));
+     }
+diff --git a/net/minecraft/advancements/triggers/ConstructBeaconTrigger.java b/net/minecraft/advancements/triggers/ConstructBeaconTrigger.java
+index 6ee46ec9c368e7cb160196b337ae214fce039c68..1e35cb69c557c66a58f2a6e4c13c6b17c8660e2a 100644
+--- a/net/minecraft/advancements/triggers/ConstructBeaconTrigger.java
++++ b/net/minecraft/advancements/triggers/ConstructBeaconTrigger.java
+@@ -15,6 +15,7 @@ public class ConstructBeaconTrigger extends SimpleCriterionTrigger<ConstructBeac
+     }
+ 
+     public void trigger(final ServerPlayer player, final int levels) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(levels));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/ConsumeItemTrigger.java b/net/minecraft/advancements/triggers/ConsumeItemTrigger.java
+index 1497ad0d10e5e06bd707d1238348747c0b217616..55be7d7fbffb2e3b90a01c20d8049897f9983ef2 100644
+--- a/net/minecraft/advancements/triggers/ConsumeItemTrigger.java
++++ b/net/minecraft/advancements/triggers/ConsumeItemTrigger.java
+@@ -19,6 +19,7 @@ public class ConsumeItemTrigger extends SimpleCriterionTrigger<ConsumeItemTrigge
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack itemStack) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(itemStack));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/CuredZombieVillagerTrigger.java b/net/minecraft/advancements/triggers/CuredZombieVillagerTrigger.java
+index 012707a94297915f32341a10bc8b130643958b4d..41f3dc5350dafce15f5594caee3d73b7ef4c9ba2 100644
+--- a/net/minecraft/advancements/triggers/CuredZombieVillagerTrigger.java
++++ b/net/minecraft/advancements/triggers/CuredZombieVillagerTrigger.java
+@@ -20,6 +20,7 @@ public class CuredZombieVillagerTrigger extends SimpleCriterionTrigger<CuredZomb
+     }
+ 
+     public void trigger(final ServerPlayer player, final Zombie zombie, final Villager villager) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext zombieContext = EntityPredicate.createContext(player, zombie);
+         LootContext villagerContext = EntityPredicate.createContext(player, villager);
+         this.trigger(player, t -> t.matches(zombieContext, villagerContext));
+diff --git a/net/minecraft/advancements/triggers/DefaultBlockInteractionTrigger.java b/net/minecraft/advancements/triggers/DefaultBlockInteractionTrigger.java
+index 3d24e8aeae6a094906a356f492cdbc77162e2f30..f127935ee20f1e9d87a88c56b40e32a7e1776dd7 100644
+--- a/net/minecraft/advancements/triggers/DefaultBlockInteractionTrigger.java
++++ b/net/minecraft/advancements/triggers/DefaultBlockInteractionTrigger.java
+@@ -24,6 +24,7 @@ public class DefaultBlockInteractionTrigger extends SimpleCriterionTrigger<Defau
+     }
+ 
+     public void trigger(final ServerPlayer player, final BlockPos pos) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         ServerLevel level = player.level();
+         BlockState state = level.getBlockState(pos);
+         LootParams params = new LootParams.Builder(level)
+diff --git a/net/minecraft/advancements/triggers/DistanceTrigger.java b/net/minecraft/advancements/triggers/DistanceTrigger.java
+index e6f3f0029084020df7ca7877e65774fc526c37ba..317749a0342de1036d062fab07bc9bbd783f966a 100644
+--- a/net/minecraft/advancements/triggers/DistanceTrigger.java
++++ b/net/minecraft/advancements/triggers/DistanceTrigger.java
+@@ -19,6 +19,7 @@ public class DistanceTrigger extends SimpleCriterionTrigger<DistanceTrigger.Trig
+     }
+ 
+     public void trigger(final ServerPlayer player, final Vec3 startPosition) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         Vec3 playerPosition = player.position();
+         this.trigger(player, t -> t.matches(player.level(), startPosition, playerPosition));
+     }
+diff --git a/net/minecraft/advancements/triggers/EffectsChangedTrigger.java b/net/minecraft/advancements/triggers/EffectsChangedTrigger.java
+index 1b91c772720239afd18dbe33388b352dd3afcc3e..4000b423b382724a3f1e6e18b77ace8e2c7397df 100644
+--- a/net/minecraft/advancements/triggers/EffectsChangedTrigger.java
++++ b/net/minecraft/advancements/triggers/EffectsChangedTrigger.java
+@@ -21,6 +21,7 @@ public class EffectsChangedTrigger extends SimpleCriterionTrigger<EffectsChanged
+     }
+ 
+     public void trigger(final ServerPlayer player, final @Nullable Entity source) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext wrappedSource = source != null ? EntityPredicate.createContext(player, source) : null;
+         this.trigger(player, t -> t.matches(player, wrappedSource));
+     }
+diff --git a/net/minecraft/advancements/triggers/EnchantedItemTrigger.java b/net/minecraft/advancements/triggers/EnchantedItemTrigger.java
+index 07cf5e4aca9ec7989a1827efaffd723321e6444a..6bdde42af8a4bfc9dc2de1f5051fceda6648a3aa 100644
+--- a/net/minecraft/advancements/triggers/EnchantedItemTrigger.java
++++ b/net/minecraft/advancements/triggers/EnchantedItemTrigger.java
+@@ -17,6 +17,7 @@ public class EnchantedItemTrigger extends SimpleCriterionTrigger<EnchantedItemTr
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack itemStack, final int levels) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(itemStack, levels));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/EnterBlockTrigger.java b/net/minecraft/advancements/triggers/EnterBlockTrigger.java
+index d078bfac78341726a527399fa3f79e3d80756b59..0289277b46c8c85fd3578f0d990e722f9cd2db9f 100644
+--- a/net/minecraft/advancements/triggers/EnterBlockTrigger.java
++++ b/net/minecraft/advancements/triggers/EnterBlockTrigger.java
+@@ -21,6 +21,7 @@ public class EnterBlockTrigger extends SimpleCriterionTrigger<EnterBlockTrigger.
+     }
+ 
+     public void trigger(final ServerPlayer player, final BlockState state) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(state));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/EntityHurtPlayerTrigger.java b/net/minecraft/advancements/triggers/EntityHurtPlayerTrigger.java
+index d3c56031a8dc29895740e637b2a085f2465d9e82..8abd6826508c05460ffac60076ed708c875fde33 100644
+--- a/net/minecraft/advancements/triggers/EntityHurtPlayerTrigger.java
++++ b/net/minecraft/advancements/triggers/EntityHurtPlayerTrigger.java
+@@ -16,6 +16,7 @@ public class EntityHurtPlayerTrigger extends SimpleCriterionTrigger<EntityHurtPl
+     }
+ 
+     public void trigger(final ServerPlayer player, final DamageSource source, final float originalDamage, final float actualDamage, final boolean blocked) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(player, source, originalDamage, actualDamage, blocked));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/FallAfterExplosionTrigger.java b/net/minecraft/advancements/triggers/FallAfterExplosionTrigger.java
+index cfdf0a0eaa425715c5245238aa9a4cffcb8cc5b7..bcd41f2d12a6a24073a6a23bdfae2a3c988a6a29 100644
+--- a/net/minecraft/advancements/triggers/FallAfterExplosionTrigger.java
++++ b/net/minecraft/advancements/triggers/FallAfterExplosionTrigger.java
+@@ -24,6 +24,7 @@ public class FallAfterExplosionTrigger extends SimpleCriterionTrigger<FallAfterE
+     }
+ 
+     public void trigger(final ServerPlayer player, final Vec3 startPosition, final @Nullable Entity cause) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         Vec3 playerPosition = player.position();
+         LootContext wrappedCause = cause != null ? EntityPredicate.createContext(player, cause) : null;
+         this.trigger(player, t -> t.matches(player.level(), startPosition, playerPosition, wrappedCause));
+diff --git a/net/minecraft/advancements/triggers/FilledBucketTrigger.java b/net/minecraft/advancements/triggers/FilledBucketTrigger.java
+index 9d37f70cd51cee6661d7a13e566226ee36f25403..ab39af49a3a574b29a25f052e6a04895fb0ac41b 100644
+--- a/net/minecraft/advancements/triggers/FilledBucketTrigger.java
++++ b/net/minecraft/advancements/triggers/FilledBucketTrigger.java
+@@ -16,6 +16,7 @@ public class FilledBucketTrigger extends SimpleCriterionTrigger<FilledBucketTrig
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack item) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(item));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/FishingRodHookedTrigger.java b/net/minecraft/advancements/triggers/FishingRodHookedTrigger.java
+index e64e6c9fecec53f8957d4684e0f42b70df8c019b..a260bbeeb8e2c67d8050957790b2d0765883d846 100644
+--- a/net/minecraft/advancements/triggers/FishingRodHookedTrigger.java
++++ b/net/minecraft/advancements/triggers/FishingRodHookedTrigger.java
+@@ -25,6 +25,7 @@ public class FishingRodHookedTrigger extends SimpleCriterionTrigger<FishingRodHo
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack rod, final FishingHook hook, final Collection<ItemStack> items) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext hookedInContext = EntityPredicate.createContext(player, hook.getHookedIn() != null ? hook.getHookedIn() : hook);
+         this.trigger(player, t -> t.matches(rod, hookedInContext, items));
+     }
+diff --git a/net/minecraft/advancements/triggers/InventoryChangeTrigger.java b/net/minecraft/advancements/triggers/InventoryChangeTrigger.java
+index 399203f83bd406c748708987a7de2cb4b0e9ee4d..561796881d5d855832e07f2afc71bdb67668ba20 100644
+--- a/net/minecraft/advancements/triggers/InventoryChangeTrigger.java
++++ b/net/minecraft/advancements/triggers/InventoryChangeTrigger.java
+@@ -24,6 +24,7 @@ public class InventoryChangeTrigger extends SimpleCriterionTrigger<InventoryChan
+     }
+ 
+     public void trigger(final ServerPlayer player, final Inventory inventory, final ItemStack changedItem) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         int slotsFull = 0;
+         int slotsEmpty = 0;
+         int slotsOccupied = 0;
+diff --git a/net/minecraft/advancements/triggers/ItemDurabilityTrigger.java b/net/minecraft/advancements/triggers/ItemDurabilityTrigger.java
+index 239441af6468c29f1343d160a01b9d46ca0443c9..1cf1f581ec3cbabebdff31a9cad4f2464c9ca9ff 100644
+--- a/net/minecraft/advancements/triggers/ItemDurabilityTrigger.java
++++ b/net/minecraft/advancements/triggers/ItemDurabilityTrigger.java
+@@ -17,6 +17,7 @@ public class ItemDurabilityTrigger extends SimpleCriterionTrigger<ItemDurability
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack itemStack, final int newDurability) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(itemStack, newDurability));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/ItemUsedOnLocationTrigger.java b/net/minecraft/advancements/triggers/ItemUsedOnLocationTrigger.java
+index ac0c12a80e4203540a451b1423c496e0c7b1edd2..415ac776f9d5043b1a4ef1f7f5c364e865a670bb 100644
+--- a/net/minecraft/advancements/triggers/ItemUsedOnLocationTrigger.java
++++ b/net/minecraft/advancements/triggers/ItemUsedOnLocationTrigger.java
+@@ -37,6 +37,7 @@ public class ItemUsedOnLocationTrigger extends SimpleCriterionTrigger<ItemUsedOn
+     }
+ 
+     public void trigger(final ServerPlayer player, final BlockPos pos, final ItemInstance tool) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         ServerLevel level = player.level();
+         BlockState state = level.getBlockState(pos);
+         BlockEntity blockEntity = level.getBlockEntity(pos);
+diff --git a/net/minecraft/advancements/triggers/KilledByArrowTrigger.java b/net/minecraft/advancements/triggers/KilledByArrowTrigger.java
+index 014dbe7e87dfe7a785048f984a0854035f5788f0..c04ddb1ecbe37c5d9d1f3d4e9ea333d3c6eafaee 100644
+--- a/net/minecraft/advancements/triggers/KilledByArrowTrigger.java
++++ b/net/minecraft/advancements/triggers/KilledByArrowTrigger.java
+@@ -33,6 +33,7 @@ public class KilledByArrowTrigger extends SimpleCriterionTrigger<KilledByArrowTr
+     }
+ 
+     public void trigger(final ServerPlayer player, final Collection<Entity> victims, final @Nullable ItemStack firedByWeapon) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         List<LootContext> victimContexts = Lists.newArrayList();
+         Set<EntityType<?>> entityTypes = Sets.newHashSet();
+ 
+diff --git a/net/minecraft/advancements/triggers/KilledTrigger.java b/net/minecraft/advancements/triggers/KilledTrigger.java
+index 6467b1c25900b6c17556e355de01d92c1d2c4e70..6bd6fab4ca02a7c15fc80f7ae708b37525bd9076 100644
+--- a/net/minecraft/advancements/triggers/KilledTrigger.java
++++ b/net/minecraft/advancements/triggers/KilledTrigger.java
+@@ -21,6 +21,7 @@ public class KilledTrigger extends SimpleCriterionTrigger<KilledTrigger.TriggerI
+     }
+ 
+     public void trigger(final ServerPlayer player, final Entity entity, final DamageSource killingBlow) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext entityContext = EntityPredicate.createContext(player, entity);
+         this.trigger(player, t -> t.matches(player, entityContext, killingBlow));
+     }
+diff --git a/net/minecraft/advancements/triggers/LevitationTrigger.java b/net/minecraft/advancements/triggers/LevitationTrigger.java
+index f5a4a8995b4535d5bf77a3a490cb6426a3d1af5b..9e07b3fd3c56aecca43835d75088fe18e1381997 100644
+--- a/net/minecraft/advancements/triggers/LevitationTrigger.java
++++ b/net/minecraft/advancements/triggers/LevitationTrigger.java
+@@ -17,6 +17,7 @@ public class LevitationTrigger extends SimpleCriterionTrigger<LevitationTrigger.
+     }
+ 
+     public void trigger(final ServerPlayer player, final Vec3 start, final int duration) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(player, start, duration));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/LightningStrikeTrigger.java b/net/minecraft/advancements/triggers/LightningStrikeTrigger.java
+index c6f3df4106b7519c61716acff900d9e8d0854490..efc73f9e3f29886ed6e43db3f1fbcd16013fb90c 100644
+--- a/net/minecraft/advancements/triggers/LightningStrikeTrigger.java
++++ b/net/minecraft/advancements/triggers/LightningStrikeTrigger.java
+@@ -22,6 +22,7 @@ public class LightningStrikeTrigger extends SimpleCriterionTrigger<LightningStri
+     }
+ 
+     public void trigger(final ServerPlayer player, final LightningBolt lightning, final List<Entity> entitiesAround) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         List<LootContext> entitiesAroundContexts = entitiesAround.stream().map(v -> EntityPredicate.createContext(player, v)).collect(Collectors.toList());
+         LootContext lightningContext = EntityPredicate.createContext(player, lightning);
+         this.trigger(player, t -> t.matches(lightningContext, entitiesAroundContexts));
+diff --git a/net/minecraft/advancements/triggers/LootTableTrigger.java b/net/minecraft/advancements/triggers/LootTableTrigger.java
+index 18202f29cfd98ce72162e7ba3f53781600b54102..324ad501588e51e27aa453ba61dc778ea2e8e604 100644
+--- a/net/minecraft/advancements/triggers/LootTableTrigger.java
++++ b/net/minecraft/advancements/triggers/LootTableTrigger.java
+@@ -17,6 +17,7 @@ public class LootTableTrigger extends SimpleCriterionTrigger<LootTableTrigger.Tr
+     }
+ 
+     public void trigger(final ServerPlayer player, final ResourceKey<LootTable> lootTable) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(lootTable));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/PickedUpItemTrigger.java b/net/minecraft/advancements/triggers/PickedUpItemTrigger.java
+index af91f6ce8ed7b9d14bf08e762879cd18282d57aa..b4808bade9afa5d96f453b1de7f33f77f145ba7d 100644
+--- a/net/minecraft/advancements/triggers/PickedUpItemTrigger.java
++++ b/net/minecraft/advancements/triggers/PickedUpItemTrigger.java
+@@ -22,6 +22,7 @@ public class PickedUpItemTrigger extends SimpleCriterionTrigger<PickedUpItemTrig
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack itemStack, final @Nullable Entity entity) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext context = EntityPredicate.createContext(player, entity);
+         this.trigger(player, t -> t.matches(player, itemStack, context));
+     }
+diff --git a/net/minecraft/advancements/triggers/PlayerHurtEntityTrigger.java b/net/minecraft/advancements/triggers/PlayerHurtEntityTrigger.java
+index b7dc9d0c07061a462bacda7c20076910036210f3..ac3edf4d72d3af4ea8d2a69eb0fe458ad604b0ae 100644
+--- a/net/minecraft/advancements/triggers/PlayerHurtEntityTrigger.java
++++ b/net/minecraft/advancements/triggers/PlayerHurtEntityTrigger.java
+@@ -23,6 +23,7 @@ public class PlayerHurtEntityTrigger extends SimpleCriterionTrigger<PlayerHurtEn
+     public void trigger(
+         final ServerPlayer player, final Entity victim, final DamageSource source, final float originalDamage, final float actualDamage, final boolean blocked
+     ) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext victimContext = EntityPredicate.createContext(player, victim);
+         this.trigger(player, t -> t.matches(player, victimContext, source, originalDamage, actualDamage, blocked));
+     }
+diff --git a/net/minecraft/advancements/triggers/PlayerInteractTrigger.java b/net/minecraft/advancements/triggers/PlayerInteractTrigger.java
+index 5a56e94ef7feb5909262e448a059af2c9c945597..2f642e99a78cdc58551f34e76a88f083254812a5 100644
+--- a/net/minecraft/advancements/triggers/PlayerInteractTrigger.java
++++ b/net/minecraft/advancements/triggers/PlayerInteractTrigger.java
+@@ -21,6 +21,7 @@ public class PlayerInteractTrigger extends SimpleCriterionTrigger<PlayerInteract
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack itemStack, final Entity interactedWith) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext context = EntityPredicate.createContext(player, interactedWith);
+         this.trigger(player, t -> t.matches(itemStack, context));
+     }
+diff --git a/net/minecraft/advancements/triggers/PlayerTrigger.java b/net/minecraft/advancements/triggers/PlayerTrigger.java
+index 37a550369b4b095a7fb2c796073ae31a4e33f092..f0dba43f3f4904ac40aa084d31780f09531706c0 100644
+--- a/net/minecraft/advancements/triggers/PlayerTrigger.java
++++ b/net/minecraft/advancements/triggers/PlayerTrigger.java
+@@ -22,6 +22,7 @@ public class PlayerTrigger extends SimpleCriterionTrigger<PlayerTrigger.TriggerI
+     }
+ 
+     public void trigger(final ServerPlayer player) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> true);
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/RecipeCraftedTrigger.java b/net/minecraft/advancements/triggers/RecipeCraftedTrigger.java
+index 67718a7bfff0dc4f0f902166fc7b2994f2e8d6e2..7d183e010c2052116b144f45b236386949aa8937 100644
+--- a/net/minecraft/advancements/triggers/RecipeCraftedTrigger.java
++++ b/net/minecraft/advancements/triggers/RecipeCraftedTrigger.java
+@@ -22,6 +22,7 @@ public class RecipeCraftedTrigger extends SimpleCriterionTrigger<RecipeCraftedTr
+     }
+ 
+     public void trigger(final ServerPlayer player, final ResourceKey<Recipe<?>> id, final List<ItemStack> usedIngredients) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(id, usedIngredients));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/RecipeUnlockedTrigger.java b/net/minecraft/advancements/triggers/RecipeUnlockedTrigger.java
+index 57302c30a4126c8fc7fe0fc4327d05a7cc3ba063..de9974e3182765472d989443d82474bf0a7589fc 100644
+--- a/net/minecraft/advancements/triggers/RecipeUnlockedTrigger.java
++++ b/net/minecraft/advancements/triggers/RecipeUnlockedTrigger.java
+@@ -17,6 +17,7 @@ public class RecipeUnlockedTrigger extends SimpleCriterionTrigger<RecipeUnlocked
+     }
+ 
+     public void trigger(final ServerPlayer player, final RecipeHolder<?> recipe) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(recipe));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/ShotCrossbowTrigger.java b/net/minecraft/advancements/triggers/ShotCrossbowTrigger.java
+index c282d844fdbc83fc3ea76d66bafdc4c3df6ad6b1..98db736edb9388c3dd4b649f0b1ab3adf40bc21f 100644
+--- a/net/minecraft/advancements/triggers/ShotCrossbowTrigger.java
++++ b/net/minecraft/advancements/triggers/ShotCrossbowTrigger.java
+@@ -19,6 +19,7 @@ public class ShotCrossbowTrigger extends SimpleCriterionTrigger<ShotCrossbowTrig
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack itemStack) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(itemStack));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/SimpleCriterionTrigger.java b/net/minecraft/advancements/triggers/SimpleCriterionTrigger.java
+index ad9cb221621148311e7a69009c3fd2a45b3627d5..855cfc9a359d9c74a30d0b5e5ce5a926bff33cac 100644
+--- a/net/minecraft/advancements/triggers/SimpleCriterionTrigger.java
++++ b/net/minecraft/advancements/triggers/SimpleCriterionTrigger.java
+@@ -18,6 +18,7 @@ import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
+ 
+ public abstract class SimpleCriterionTrigger<T extends SimpleCriterionTrigger.SimpleInstance> implements CriterionTrigger<T> {
+     protected void trigger(final ServerPlayer player, final Predicate<T> matcher) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread(player, "Cannot trigger criterion async"); // Canvas - region threading
+         PlayerAdvancements advancements = player.getAdvancements();
+         Map<PlayerAdvancements.TriggerInstanceKey, T> listenersForType = advancements.getTriggerMapForType(this);
+diff --git a/net/minecraft/advancements/triggers/SlideDownBlockTrigger.java b/net/minecraft/advancements/triggers/SlideDownBlockTrigger.java
+index 00afc0ff514b724aaab4fd5354824bfddeb78aae..2c42dbe1445bd47ed641e1fb22a93103090cf5f3 100644
+--- a/net/minecraft/advancements/triggers/SlideDownBlockTrigger.java
++++ b/net/minecraft/advancements/triggers/SlideDownBlockTrigger.java
+@@ -21,6 +21,7 @@ public class SlideDownBlockTrigger extends SimpleCriterionTrigger<SlideDownBlock
+     }
+ 
+     public void trigger(final ServerPlayer player, final BlockState state) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(state));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/SpearMobsTrigger.java b/net/minecraft/advancements/triggers/SpearMobsTrigger.java
+index da396fe0e0954a560703cf19c0447eb0a640e61a..1403c0b70f244829781c44623871b2b29010edad 100644
+--- a/net/minecraft/advancements/triggers/SpearMobsTrigger.java
++++ b/net/minecraft/advancements/triggers/SpearMobsTrigger.java
+@@ -15,6 +15,7 @@ public class SpearMobsTrigger extends SimpleCriterionTrigger<SpearMobsTrigger.Tr
+     }
+ 
+     public void trigger(final ServerPlayer player, final int number) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(number));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/StartRidingTrigger.java b/net/minecraft/advancements/triggers/StartRidingTrigger.java
+index 5359d1338cc1fa24ddab70039748c9f11ff014b3..d92b2d1fa07cf583a7a7abfd4e50f1c5707226ba 100644
+--- a/net/minecraft/advancements/triggers/StartRidingTrigger.java
++++ b/net/minecraft/advancements/triggers/StartRidingTrigger.java
+@@ -15,6 +15,7 @@ public class StartRidingTrigger extends SimpleCriterionTrigger<StartRidingTrigge
+     }
+ 
+     public void trigger(final ServerPlayer player) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> true);
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/SummonedEntityTrigger.java b/net/minecraft/advancements/triggers/SummonedEntityTrigger.java
+index 93e35517c269e7d3d9a071d8d0f0721ad6fcc241..bf317f98cbed0ae44a407b5ab70e02aa5bb955b2 100644
+--- a/net/minecraft/advancements/triggers/SummonedEntityTrigger.java
++++ b/net/minecraft/advancements/triggers/SummonedEntityTrigger.java
+@@ -19,6 +19,7 @@ public class SummonedEntityTrigger extends SimpleCriterionTrigger<SummonedEntity
+     }
+ 
+     public void trigger(final ServerPlayer player, final Entity entity) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext context = EntityPredicate.createContext(player, entity);
+         this.trigger(player, t -> t.matches(context));
+     }
+diff --git a/net/minecraft/advancements/triggers/TameAnimalTrigger.java b/net/minecraft/advancements/triggers/TameAnimalTrigger.java
+index d1c57727679c032cbfc8824495a479cba18584a2..99b480bc12168706a89078463b6239aaf8a720fc 100644
+--- a/net/minecraft/advancements/triggers/TameAnimalTrigger.java
++++ b/net/minecraft/advancements/triggers/TameAnimalTrigger.java
+@@ -19,6 +19,7 @@ public class TameAnimalTrigger extends SimpleCriterionTrigger<TameAnimalTrigger.
+     }
+ 
+     public void trigger(final ServerPlayer player, final Animal animal) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext animalContext = EntityPredicate.createContext(player, animal);
+         this.trigger(player, t -> t.matches(animalContext));
+     }
+diff --git a/net/minecraft/advancements/triggers/TargetBlockTrigger.java b/net/minecraft/advancements/triggers/TargetBlockTrigger.java
+index d5db07b233b2fdb38194a08a25ac498734cb9311..5d4b3e4978273c6c51fee7d54311e2b1ff84c9da 100644
+--- a/net/minecraft/advancements/triggers/TargetBlockTrigger.java
++++ b/net/minecraft/advancements/triggers/TargetBlockTrigger.java
+@@ -21,6 +21,7 @@ public class TargetBlockTrigger extends SimpleCriterionTrigger<TargetBlockTrigge
+     }
+ 
+     public void trigger(final ServerPlayer player, final Entity projectile, final Vec3 hitPosition, final int signalStrength) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext projectileContext = EntityPredicate.createContext(player, projectile);
+         this.trigger(player, t -> t.matches(projectileContext, hitPosition, signalStrength));
+     }
+diff --git a/net/minecraft/advancements/triggers/TradeTrigger.java b/net/minecraft/advancements/triggers/TradeTrigger.java
+index 6def3b051f7a807024b68513df6132ad663d1d5d..51e4afc39f67958880432c8ea8c8d3a4d1681b8f 100644
+--- a/net/minecraft/advancements/triggers/TradeTrigger.java
++++ b/net/minecraft/advancements/triggers/TradeTrigger.java
+@@ -21,6 +21,7 @@ public class TradeTrigger extends SimpleCriterionTrigger<TradeTrigger.TriggerIns
+     }
+ 
+     public void trigger(final ServerPlayer player, final AbstractVillager villager, final ItemStack itemStack) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         LootContext villagerContext = EntityPredicate.createContext(player, villager);
+         this.trigger(player, t -> t.matches(villagerContext, itemStack));
+     }
+diff --git a/net/minecraft/advancements/triggers/UsedEnderEyeTrigger.java b/net/minecraft/advancements/triggers/UsedEnderEyeTrigger.java
+index ac78104731bac6162d867ed6cdf86bf9db8999b5..227edef565c52bfc6fa88dea50105a3e3d159697 100644
+--- a/net/minecraft/advancements/triggers/UsedEnderEyeTrigger.java
++++ b/net/minecraft/advancements/triggers/UsedEnderEyeTrigger.java
+@@ -16,6 +16,7 @@ public class UsedEnderEyeTrigger extends SimpleCriterionTrigger<UsedEnderEyeTrig
+     }
+ 
+     public void trigger(final ServerPlayer player, final BlockPos feature) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         double xd = player.getX() - feature.getX();
+         double zd = player.getZ() - feature.getZ();
+         double sqrDist = xd * xd + zd * zd;
+diff --git a/net/minecraft/advancements/triggers/UsedTotemTrigger.java b/net/minecraft/advancements/triggers/UsedTotemTrigger.java
+index 81e5d905f7dc047efe08f84ecdeefab698aef46a..df65162eb091b15c270bbbee13d12b2ead16d1d1 100644
+--- a/net/minecraft/advancements/triggers/UsedTotemTrigger.java
++++ b/net/minecraft/advancements/triggers/UsedTotemTrigger.java
+@@ -19,6 +19,7 @@ public class UsedTotemTrigger extends SimpleCriterionTrigger<UsedTotemTrigger.Tr
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack itemStack) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(itemStack));
+     }
+ 
+diff --git a/net/minecraft/advancements/triggers/UsingItemTrigger.java b/net/minecraft/advancements/triggers/UsingItemTrigger.java
+index e25736e5ebff262a74ac9e601f6cbea007c80724..b9c725961ee23eb86ee30a630d13dd7f5f4c0dfb 100644
+--- a/net/minecraft/advancements/triggers/UsingItemTrigger.java
++++ b/net/minecraft/advancements/triggers/UsingItemTrigger.java
+@@ -17,6 +17,7 @@ public class UsingItemTrigger extends SimpleCriterionTrigger<UsingItemTrigger.Tr
+     }
+ 
+     public void trigger(final ServerPlayer player, final ItemStack item) {
++        if (player.level().canvasConfig().disableCriterionTrigger) return; // Canvas - disable criterion trigger config
+         this.trigger(player, t -> t.matches(item));
+     }
+ 

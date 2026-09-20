@@ -1,0 +1,10 @@
+--- a/net/minecraft/server/level/WorldGenRegion.java
++++ b/net/minecraft/server/level/WorldGenRegion.java
+@@ -143,6 +_,7 @@
+         this.centerChunkX = centerPos.x();
+         this.centerChunkZ = centerPos.z();
+         this.writeRadius = generatingStep.blockStateWriteRadius();
++        this.environmentAttributes = EnvironmentAttributeSystem.builder().addStaticLayers(this).build();
+         this.structureManager = level.structureManager().forWorldGenRegion(this); // Folia - region threading
+     }
+ 

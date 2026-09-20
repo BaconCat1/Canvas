@@ -1,0 +1,11 @@
+--- a/net/minecraft/world/entity/boss/enderdragon/EndCrystal.java
++++ b/net/minecraft/world/entity/boss/enderdragon/EndCrystal.java
+@@ -56,7 +_,7 @@
+         this.time++;
+         this.applyEffectsFromBlocks();
+         // this.handlePortal(); // Folia - region threading
+-        if (this.level() instanceof ServerLevel) {
++        if (this.level() instanceof ServerLevel serverLevel) {
+             BlockPos pos = this.blockPosition();
+             if (serverLevel.getDragonFight() != null && serverLevel.getBlockState(pos).isAir()) {
+                 if (!org.bukkit.craftbukkit.event.CraftEventFactory.callBlockIgniteEvent(serverLevel, pos, this).isCancelled()) { // Paper

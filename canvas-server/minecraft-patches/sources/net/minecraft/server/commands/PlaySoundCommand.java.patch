@@ -1,0 +1,29 @@
+--- a/net/minecraft/server/commands/PlaySoundCommand.java
++++ b/net/minecraft/server/commands/PlaySoundCommand.java
+@@ -211,24 +_,10 @@
+                     );
+                 });
+                 // Canvas end - region threading
+-                playedFor.add(player);
++                tracker.track(player);
+             }
+         }
+-
+-        int count = playedFor.size();
+-        if (count == 0) {
+-            throw ERROR_TOO_FAR.create();
+-        }
+-
+-        if (count == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.playsound.success.single", Component.translationArg(sound), playedFor.getFirst().getDisplayName()), true
+-            );
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.playsound.success.multiple", Component.translationArg(sound), count), true);
+-        }
+-
+-        return count;
++        return tracker.sendFeedback(source, true, RESPONSE_PLAY, sound);
+         }, position, level, source); // Canvas - region threading
+     }
+ }

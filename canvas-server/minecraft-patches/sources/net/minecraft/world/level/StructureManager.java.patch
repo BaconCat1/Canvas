@@ -1,0 +1,13 @@
+--- a/net/minecraft/world/level/StructureManager.java
++++ b/net/minecraft/world/level/StructureManager.java
+@@ -61,6 +_,10 @@
+         return result.build();
+     }
+ 
++    public List<StructureStart> startsForStructure(final int sectionX, final int sectionZ, final Predicate<Structure> matcher) {
++        return this.startsForStructure(new ChunkPos(sectionX, sectionZ), matcher);
++    }
++
+     public List<StructureStart> startsForStructure(final int sectionX, final int sectionZ, final Structure structure) {
+         LongSet referencesForStructure = this.level.getChunk(sectionX, sectionZ, ChunkStatus.STRUCTURE_REFERENCES).getReferencesForStructure(structure);
+         Builder<StructureStart> result = ImmutableList.builder();

@@ -1,0 +1,11 @@
+--- a/net/minecraft/server/ReloadableServerResources.java
++++ b/net/minecraft/server/ReloadableServerResources.java
+@@ -70,7 +_,7 @@
+     }
+ 
+     public List<PreparableReloadListener> listeners() {
+-        return List.of(this.recipes, this.advancements); // Canvas - region threading
++        return List.of(this.functionLibrary);
+     }
+ 
+     public static CompletableFuture<ReloadableServerResources> loadResources(

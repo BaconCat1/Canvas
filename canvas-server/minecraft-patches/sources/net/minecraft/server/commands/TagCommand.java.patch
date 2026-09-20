@@ -1,0 +1,83 @@
+--- a/net/minecraft/server/commands/TagCommand.java
++++ b/net/minecraft/server/commands/TagCommand.java
+@@ -99,18 +_,11 @@
+     private static int addCallback(
+         final CommandSourceStack source, final Collection<? extends Entity> targets, final String name
+     ) throws CommandSyntaxException {
+-        if (targets.isEmpty()) {
+-    // Canvas end - region threading
+-            throw ERROR_ADD_FAILED.create();
+-        }
+-
+-        if (targets.size() == 1) {
+-            source.sendSuccess(() -> Component.translatable("commands.tag.add.success.single", name, targets.iterator().next().getDisplayName()), true);
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.tag.add.success.multiple", name, targets.size()), true);
+-        }
+-
+-        return targets.size(); // Canvas - region threading
++        CommandResponseTracker<Entity> tracker = CommandResponseTracker.create();
++        for (Entity target : targets) {
++            tracker.track(target);
++        }
++        return tracker.sendFeedback(source, true, RESPONSE_ADD, name);
+     }
+ 
+     private static int removeTag(final CommandSourceStack source, final Collection<? extends Entity> targets, final String name) throws CommandSyntaxException {
+@@ -135,18 +_,11 @@
+     private static int removeCallback(
+         final CommandSourceStack source, final Collection<? extends Entity> targets, final String name
+     ) throws CommandSyntaxException {
+-        if (targets.isEmpty()) {
+-    // Canvas end - region threading
+-            throw ERROR_REMOVE_FAILED.create();
+-        }
+-
+-        if (targets.size() == 1) {
+-            source.sendSuccess(() -> Component.translatable("commands.tag.remove.success.single", name, targets.iterator().next().getDisplayName()), true);
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.tag.remove.success.multiple", name, targets.size()), true);
+-        }
+-
+-        return targets.size(); // Canvas - region threading
++        CommandResponseTracker<Entity> tracker = CommandResponseTracker.create();
++        for (Entity target : targets) {
++            tracker.track(target);
++        }
++        return tracker.sendFeedback(source, true, RESPONSE_REMOVE, name);
+     }
+ 
+     // Canvas start - region threading
+@@ -159,24 +_,14 @@
+         return 1;
+     }
+ 
+-    private static int listCallback(final Collection<String> tags, final CommandSourceStack source, final Collection<? extends Entity> targets) {
+-    // Canvas end - region threading
+-        if (targets.size() == 1) {
+-            Entity entity = targets.iterator().next();
+-            if (tags.isEmpty()) {
+-                source.sendSuccess(() -> Component.translatable("commands.tag.list.single.empty", entity.getDisplayName()), false);
+-            } else {
+-                source.sendSuccess(
+-                    () -> Component.translatable("commands.tag.list.single.success", entity.getDisplayName(), tags.size(), ComponentUtils.formatList(tags)),
+-                    false
+-                );
+-            }
+-        } else if (tags.isEmpty()) {
+-            source.sendSuccess(() -> Component.translatable("commands.tag.list.multiple.empty", targets.size()), false);
+-        } else {
+-            response.sendFeedback(source, false, RESPONSE_LIST, tags);
++    private static int listCallback(final Collection<String> tags, final CommandSourceStack source, final Collection<? extends Entity> targets) throws CommandSyntaxException {
++        CommandResponseTracker<Entity> response = CommandResponseTracker.create();
++        for (Entity target : targets) {
++            response.track(target);
+         }
+-
+-        return tags.size();
++        Set<String> tagSet = new HashSet<>(tags);
++        return tagSet.isEmpty()
++            ? response.sendFeedback(source, false, RESPONSE_NO_TAGS)
++            : response.sendFeedback(source, false, RESPONSE_LIST, tagSet);
+     }
+ }

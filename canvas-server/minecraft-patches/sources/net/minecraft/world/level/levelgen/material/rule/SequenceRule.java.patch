@@ -1,0 +1,19 @@
+--- a/net/minecraft/world/level/levelgen/material/rule/SequenceRule.java
++++ b/net/minecraft/world/level/levelgen/material/rule/SequenceRule.java
+@@ -29,12 +_,14 @@
+         }
+ 
+         return (blockX, blockY, blockZ) -> {
+-            for (RuleEvaluator rule : sequence) {
+-                BlockState state = rule.tryApply(blockX, blockY, blockZ);
++            // Canvas start - reduce worldgen allocations
++            for (int i = 0; i < sequence.length; i++) {
++                BlockState state = sequence[i].tryApply(blockX, blockY, blockZ);
+                 if (state != null) {
+                     return state;
+                 }
+             }
++            // Canvas end - reduce worldgen allocations
+ 
+             return null;
+         };

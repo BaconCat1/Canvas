@@ -1,0 +1,44 @@
+--- a/net/minecraft/server/commands/TeamCommand.java
++++ b/net/minecraft/server/commands/TeamCommand.java
+@@ -306,14 +_,11 @@
+         return 1;
+     }
+ 
+-    private static int leaveCallback(final CommandSourceStack source, final Collection<ScoreHolder> members) {
+-    // Canvas end - region threading
+-        if (members.size() == 1) {
+-            source.sendSuccess(() -> Component.translatable("commands.team.leave.success.single", getFirstMemberName(members)), true);
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.team.leave.success.multiple", members.size()), true);
++    private static int leaveCallback(final CommandSourceStack source, final Collection<ScoreHolder> members) throws CommandSyntaxException {
++        CommandResponseTracker<ScoreHolder> tracker = CommandResponseTracker.create();
++        for (ScoreHolder member : members) {
++            tracker.track(member);
+         }
+-
+         return tracker.sendFeedback(source, true, RESPONSE_LEAVE);
+     }
+ 
+@@ -345,17 +_,12 @@
+         return 1;
+     }
+ 
+-    private static int joinCallback(final CommandSourceStack source, final Collection<ScoreHolder> members, final PlayerTeam team) {
+-    // Canvas end - region threading
+-        if (members.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable("commands.team.join.success.single", getFirstMemberName(members), team.getFormattedDisplayName()), true
+-            );
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.team.join.success.multiple", members.size(), team.getFormattedDisplayName()), true);
++    private static int joinCallback(final CommandSourceStack source, final Collection<ScoreHolder> members, final PlayerTeam team) throws CommandSyntaxException {
++        CommandResponseTracker<ScoreHolder> tracker = CommandResponseTracker.create();
++        for (ScoreHolder member : members) {
++            tracker.track(member);
+         }
+-
+-        return members.size();
++        return tracker.sendFeedback(source, true, RESPONSE_JOIN, team);
+     }
+ 
+     private static int setNameTagVisibility(final CommandSourceStack source, final PlayerTeam team, final Team.Visibility visibility) throws CommandSyntaxException {

@@ -1,0 +1,20 @@
+--- a/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java
++++ b/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java
+@@ -152,7 +_,7 @@
+         complete.addWaiter((tpLoc, throwable) -> {
+             // create the exit portal
+             TheEndGatewayBlockEntity.LOGGER.debug("Creating portal at {}", tpLoc);
+-            TheEndGatewayBlockEntity.spawnGatewayPortal(world, tpLoc, EndGatewayConfiguration.knownExit(fromPos, false));
++            TheEndGatewayBlockEntity.spawnGatewayPortal(world, tpLoc, EndGatewayFeature.knownExit(fromPos, false));
+ 
+             // need to go onto the tick thread to avoid saving issues
+             io.papermc.paper.threadedregions.RegionizedServer.getInstance().taskQueue.queueTickTaskQueue(
+@@ -287,7 +_,7 @@
+                 BlockPos blockposition2 = BlockPos.containing(vec3d.x + 0.5D, 75.0D, vec3d.z + 0.5D);
+ 
+                 TheEndGatewayBlockEntity.LOGGER.debug("Failed to find a suitable block to teleport to, spawning an island on {}", blockposition2);
+-                world.registryAccess().lookup(Registries.CONFIGURED_FEATURE).flatMap((iregistry) -> {
++                world.registryAccess().lookup(Registries.FEATURE).flatMap((iregistry) -> {
+                     return iregistry.get(EndFeatures.END_ISLAND);
+                 }).ifPresent((holder_c) -> {
+                     holder_c.value().place(world, world.getChunkSource().getGenerator(), RandomSource.create(blockposition2.asLong()), blockposition2);

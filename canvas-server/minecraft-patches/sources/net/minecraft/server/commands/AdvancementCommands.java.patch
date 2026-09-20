@@ -1,0 +1,137 @@
+--- a/net/minecraft/server/commands/AdvancementCommands.java
++++ b/net/minecraft/server/commands/AdvancementCommands.java
+@@ -238,59 +_,35 @@
+         final boolean showAdvancements
+     ) throws CommandSyntaxException {
+     // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.
+-                <io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.NumericPair<Integer, Integer>, ServerPlayer>
+-                _abstract(new io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.NumericPair<>(0, 0))
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ServerPlayer>, ServerPlayer>_abstract(CommandResponseTracker.create())
+             .with(players)
+-            .executes((ServerPlayer entityPlayer) -> {
+-                int changedAdvancements = action.perform(entityPlayer, advancements, showAdvancements);
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.mapPairBoth(
+-                    (advancementCount) -> advancementCount + changedAdvancements,
+-                    (playerCount) -> changedAdvancements > 0 ? playerCount + 1 : playerCount
+-                );
++            .executes(player -> tracker -> {
++                tracker.track(player, action.perform(player, advancements, showAdvancements));
++                return tracker;
+             })
+-            .onComplete((pair, _, css) -> performCallback(
+-                pair.first(), pair.second(),
+-                css,
+-                players,
+-                action,
+-                advancements
+-            ))
++            .onComplete((tracker, selected, css) -> performCallback(tracker, css, action, advancements))
+             .start(source);
+         return 1;
+     }
+ 
+     private static int performCallback(
+-        final int advancementCount,
+-        final int playerCount,
++        final CommandResponseTracker<ServerPlayer> tracker,
+         final CommandSourceStack source,
+-        final Collection<ServerPlayer> players,
+         final AdvancementCommands.Action action,
+         final Collection<AdvancementHolder> advancements
+     ) throws CommandSyntaxException {
+-    // Canvas end - region threading
+-        if (advancementCount == 0) {
+-            if (advancements.size() == 1) {
+-                Component advancementName = Advancement.name(Iterables.getOnlyElement(advancements));
+-                if (players.size() == 1) {
+-                    throw ERROR_NO_ACTION_PERFORMED.create(
+-                        Component.translatable(action.getKey() + ".one.to.one.failure", advancementName, Iterables.getOnlyElement(players).getDisplayName())
+-                    );
+-                } else {
+-                    throw ERROR_NO_ACTION_PERFORMED.create(Component.translatable(action.getKey() + ".one.to.many.failure", advancementName, players.size()));
+-                }
+-            } else if (players.size() == 1) {
+-                throw ERROR_NO_ACTION_PERFORMED.create(
+-                    Component.translatable(action.getKey() + ".many.to.one.failure", advancements.size(), Iterables.getOnlyElement(players).getDisplayName())
+-                );
+-            } else {
+-                return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.NON_ZERO, action.singleAdvancementSuccessResponse, advancementName);
++        int advancementCount = advancements.size();
++        if (advancementCount == 1) {
++            AdvancementHolder advancement = Iterables.getOnlyElement(advancements);
++            if (tracker.totalValue() == 0) {
++                throw (CommandSyntaxException) tracker.dispatch(CommandResponseTracker.ElementType.ANY, action.singleAdvancementsError, advancement);
+             }
++            return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.NON_ZERO, action.singleAdvancementSuccessResponse, advancement);
+         } else if (tracker.totalValue() == 0) {
+-            throw (CommandSyntaxException)tracker.dispatch(CommandResponseTracker.ElementType.ANY, action.multipleAdvancementsError, advancementCount);
+-        } else {
+-            return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.NON_ZERO, action.multipleAdvancementsSuccessResponse, advancementCount);
++            throw (CommandSyntaxException) tracker.dispatch(CommandResponseTracker.ElementType.ANY, action.multipleAdvancementsError, advancementCount);
+         }
++        return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.NON_ZERO, action.multipleAdvancementsSuccessResponse, advancementCount);
+     }
+ 
+     private static int performCriterion(
+@@ -306,49 +_,30 @@
+             throw ERROR_CRITERION_NOT_FOUND.create(Advancement.name(holder), criterion);
+         }
+     // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.<ServerPlayer>_int()
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ServerPlayer>, ServerPlayer>_abstract(CommandResponseTracker.create())
+             .with(players)
+-            .executes((ServerPlayer entityPlayer) -> {
+-                if (action.performCriterion(entityPlayer, holder, criterion)) {
+-                    return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.incrementInt();
+-                }
+-                return io.canvasmc.canvas.threadedregions.commands.ExecutionCallbacks.nothing();
++            .executes(player -> tracker -> {
++                tracker.track(player, action.performCriterion(player, holder, criterion));
++                return tracker;
+             })
+-            .onComplete((playerCount, _, css) -> criterionCallback(
+-                playerCount, css,
+-                players,
+-                action,
+-                holder,
+-                criterion
+-            ))
++            .onComplete((tracker, selected, css) -> criterionCallback(tracker, css, action, holder, criterion))
+             .start(source);
+         return 1;
+     }
+ 
+     private static int criterionCallback(
+-        final int playerCount,
++        final CommandResponseTracker<ServerPlayer> tracker,
+         final CommandSourceStack source,
+-        final Collection<ServerPlayer> players,
+         final AdvancementCommands.Action action,
+         final AdvancementHolder holder,
+         final String criterion
+     ) throws CommandSyntaxException {
+     // Canvas end - region threading
+-        if (playerCount == 0) {
+-            if (players.size() == 1) {
+-                throw ERROR_NO_ACTION_PERFORMED.create(
+-                    Component.translatable(
+-                        action.getKey() + ".criterion.to.one.failure", criterion, Advancement.name(holder), Iterables.getOnlyElement(players).getDisplayName()
+-                    )
+-                );
+-            } else {
+-                throw ERROR_NO_ACTION_PERFORMED.create(
+-                    Component.translatable(action.getKey() + ".criterion.to.many.failure", criterion, Advancement.name(holder), players.size())
+-                );
+-            }
+-        } else {
+-            return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.NON_ZERO, action.criterionSuccessResponse, holder, criterion);
++        if (tracker.totalValue() == 0) {
++            throw (CommandSyntaxException) tracker.dispatch(CommandResponseTracker.ElementType.ANY, action.criterionError, holder, criterion);
+         }
++        return tracker.sendFeedback(source, true, CommandResponseTracker.ElementType.NON_ZERO, action.criterionSuccessResponse, holder, criterion);
+     }
+ 
+     private static List<AdvancementHolder> getAdvancements(

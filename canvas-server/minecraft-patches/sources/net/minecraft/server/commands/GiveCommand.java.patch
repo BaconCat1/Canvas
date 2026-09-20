@@ -1,0 +1,57 @@
+--- a/net/minecraft/server/commands/GiveCommand.java
++++ b/net/minecraft/server/commands/GiveCommand.java
+@@ -58,7 +_,6 @@
+     }
+ 
+     private static int giveItem(final CommandSourceStack source, final ItemInput input, final Collection<ServerPlayer> players, final int count) throws CommandSyntaxException {
+-        CommandResponseTracker<ServerPlayer> tracker = CommandResponseTracker.create();
+         ItemStack prototypeItemStack = input.createItemStack(1);
+         int maxStackSize = prototypeItemStack.getMaxStackSize();
+         int maxAllowedCount = maxStackSize * 100;
+@@ -67,7 +_,8 @@
+         }
+ 
+         // Canvas start - region threading
+-        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution.<ServerPlayer>_void()
++        io.canvasmc.canvas.threadedregions.commands.AbstractCommandExecution
++            .<CommandResponseTracker<ServerPlayer>, ServerPlayer>_abstract(CommandResponseTracker.create())
+             .with(players)
+             // we use "player" instead of "entityPlayer" to minimize diff against Vanilla
+             .executes((ServerPlayer player) -> {
+@@ -108,31 +_,13 @@
+                 }
+             }
+     // Canvas start - region threading
+-            return (_) -> null;
++            return tracker -> {
++                tracker.track(player);
++                return tracker;
++            };
+             })
+-            .onComplete((_, selected, css) -> giveCallback(css, selected, prototypeItemStack, count))
++            .onComplete((tracker, selected, css) -> tracker.sendFeedback(css, true, RESPONSE_GIVE, count, prototypeItemStack))
+             .start(source);
+         return 1;
+-    }
+-
+-    private static int giveCallback(
+-        final CommandSourceStack source,
+-        final Collection<? extends ServerPlayer> players,
+-        final ItemStack prototypeItemStack,
+-        final int count
+-    ) {
+-    // Canvas end - region threading
+-        if (players.size() == 1) {
+-            source.sendSuccess(
+-                () -> Component.translatable(
+-                    "commands.give.success.single", count, prototypeItemStack.getDisplayName(), players.iterator().next().getDisplayName()
+-                ),
+-                true
+-            );
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.give.success.multiple", count, prototypeItemStack.getDisplayName(), players.size()), true); // Paper - MC-151857 - correct translation key
+-        }
+-
+-        return tracker.sendFeedback(source, true, RESPONSE_GIVE, count, prototypeItemStack);
+     }
+ }
